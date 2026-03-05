@@ -1,25 +1,39 @@
 from flask import Flask, render_template, request, session, redirect, url_for
 import os
 import psycopg2
+from psycopg2.extras import RealDictCursor
 
 app = Flask(__name__)
 app.secret_key = 'super-secret-key-123'
 
 def get_db():
-    # This connects to the Cloud Locker using the link you saved in Render
+    # Connect to the Cloud Database using the environment variable
     conn = psycopg2.connect(os.environ.get('DATABASE_URL'))
     return conn
 
 @app.route('/')
 def home():
+    # Get current page, default to 1 if not provided
+    page = int(request.args.get('page', 1))
+    limit = 10
+    offset = (page - 1) * limit
+    
     conn = get_db()
-    cur = conn.cursor()
-    # Fetch posts
-    cur.execute('SELECT * FROM posts ORDER BY created_at ASC')
+    # Use RealDictCursor to get results as dictionaries
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    
+    # Fetch 10 posts for the current page, sorted by newest first
+    cur.execute('''
+        SELECT * FROM posts 
+        ORDER BY created_at DESC 
+        LIMIT %s OFFSET %s
+    ''', (limit, offset))
+    
     posts = cur.fetchall()
     cur.close()
     conn.close()
-    return render_template('home.html', posts=posts)
+    
+    return render_template('home.html', posts=posts, page=page)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -45,7 +59,7 @@ def login():
         user = request.form['username']
         pwd = request.form['password']
         conn = get_db()
-        cur = conn.cursor()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute('SELECT * FROM users WHERE username=%s AND password=%s', (user, pwd))
         user_data = cur.fetchone()
         cur.close()
