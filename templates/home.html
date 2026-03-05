@@ -1,0 +1,19 @@
+<h1>Dalek Social</h1>
+{% if session.username %}
+    <p>Hello {{ session.username }}! <a href="/logout">Logout</a></p>
+    <form action="/post" method="POST">
+        <input name="content" placeholder="Write something..." required>
+        <button>Post</button>
+    </form>
+{% else %}
+    <a href="/register">Register</a> | <a href="/login">Login</a>
+{% endif %}
+
+<h2>Feed:</h2>
+{% for post in posts %}
+    <p>
+        <b>{{ post['username'] }}</b> 
+        <small>at {{ post['created_at'] }}</small><br>
+        {{ post['content'] }}
+    </p>
+{% endfor %}
