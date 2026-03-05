@@ -1,19 +1,23 @@
 from flask import Flask, render_template, request, session, redirect, url_for
-import sqlite3
+import os
+import psycopg2
 
 app = Flask(__name__)
 app.secret_key = 'super-secret-key-123'
 
 def get_db():
-    conn = sqlite3.connect('data.db')
-    conn.row_factory = sqlite3.Row 
+    # This connects to the Cloud Locker using the link you saved in Render
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL'))
     return conn
 
 @app.route('/')
 def home():
     conn = get_db()
-    # Fetch posts sorted by time (newest first)
-    posts = conn.execute('SELECT * FROM posts ORDER BY created_at ASC').fetchall()
+    cur = conn.cursor()
+    # Fetch posts
+    cur.execute('SELECT * FROM posts ORDER BY created_at ASC')
+    posts = cur.fetchall()
+    cur.close()
     conn.close()
     return render_template('home.html', posts=posts)
 
@@ -23,13 +27,15 @@ def register():
         user = request.form['username']
         pwd = request.form['password']
         conn = get_db()
+        cur = conn.cursor()
         try:
-            conn.execute('INSERT INTO users (username, password) VALUES (?, ?)', (user, pwd))
+            cur.execute('INSERT INTO users (username, password) VALUES (%s, %s)', (user, pwd))
             conn.commit()
             return "Registered! <a href='/login'>Login here</a>"
-        except sqlite3.IntegrityError:
+        except:
             return "Username exists! <a href='/register'>Try again</a>"
         finally:
+            cur.close()
             conn.close()
     return render_template('register.html')
 
@@ -39,7 +45,10 @@ def login():
         user = request.form['username']
         pwd = request.form['password']
         conn = get_db()
-        user_data = conn.execute('SELECT * FROM users WHERE username=? AND password=?', (user, pwd)).fetchone()
+        cur = conn.cursor()
+        cur.execute('SELECT * FROM users WHERE username=%s AND password=%s', (user, pwd))
+        user_data = cur.fetchone()
+        cur.close()
         conn.close()
         if user_data:
             session['username'] = user
@@ -52,9 +61,10 @@ def add_post():
     if 'username' in session:
         content = request.form['content']
         conn = get_db()
-        # Database automatically handles the 'created_at' timestamp
-        conn.execute('INSERT INTO posts (username, content) VALUES (?, ?)', (session['username'], content))
+        cur = conn.cursor()
+        cur.execute('INSERT INTO posts (username, content) VALUES (%s, %s)', (session['username'], content))
         conn.commit()
+        cur.close()
         conn.close()
     return redirect(url_for('home'))
 
@@ -64,12 +74,13 @@ def logout():
     return redirect(url_for('home'))
 
 if __name__ == '__main__':
-    # Setup tables with the new timestamp column
     conn = get_db()
-    conn.execute('CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username TEXT UNIQUE, password TEXT)')
-    conn.execute('''CREATE TABLE IF NOT EXISTS posts 
-                  (id INTEGER PRIMARY KEY, username TEXT, content TEXT, 
+    cur = conn.cursor()
+    cur.execute('CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, username TEXT UNIQUE, password TEXT)')
+    cur.execute('''CREATE TABLE IF NOT EXISTS posts 
+                  (id SERIAL PRIMARY KEY, username TEXT, content TEXT, 
                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
     conn.commit()
+    cur.close()
     conn.close()
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000)
