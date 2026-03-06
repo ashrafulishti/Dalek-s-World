@@ -1,448 +1,387 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DALEKS</title>
-    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <title>DALEKS — Secure Channel</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --green: #00ff41;
-            --green-dim: #00aa2a;
-            --green-glow: rgba(0, 255, 65, 0.15);
-            --red: #ff2244;
-            --blue: #0084ff;
-            --bg: #000;
-            --panel: #050f05;
-            --border: rgba(0, 255, 65, 0.3);
+            --bg:        #0a0c0f;
+            --surface:   #0f1318;
+            --surface2:  #151a21;
+            --border:    rgba(255,255,255,0.06);
+            --border-hi: rgba(255,255,255,0.12);
+            --accent:    #00e5a0;
+            --accent-dim:rgba(0,229,160,0.12);
+            --accent2:   #0af;
+            --text:      #c8d4e0;
+            --text-dim:  #4a5568;
+            --text-mid:  #7a8fa6;
+            --d0: #00e5a0; --d1: #0af; --d2: #f0a; --d3: #fa0;
+            --d4: #a0f;    --d5: #0fa; --d6: #f44; --d7: #4af;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        body {
+        html, body {
+            height: 100%; height: 100dvh;
+            overflow: hidden;
             background: var(--bg);
-            color: var(--green);
-            font-family: 'Share Tech Mono', monospace;
+            color: var(--text);
+            font-family: 'DM Mono', monospace;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .shell {
+            display: flex; flex-direction: column;
             height: 100dvh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
+            max-width: 760px;
+            margin: 0 auto;
             position: relative;
         }
 
-        /* Scanline overlay */
-        body::before {
+        /* subtle dot grid */
+        .shell::before {
             content: '';
-            position: fixed;
-            inset: 0;
-            background: repeating-linear-gradient(
-                0deg,
-                transparent,
-                transparent 2px,
-                rgba(0, 255, 65, 0.015) 2px,
-                rgba(0, 255, 65, 0.015) 4px
-            );
-            pointer-events: none;
-            z-index: 9999;
+            position: fixed; inset: 0;
+            background-image: radial-gradient(rgba(0,229,160,0.06) 1px, transparent 1px);
+            background-size: 28px 28px;
+            pointer-events: none; z-index: 0;
         }
 
-        /* CRT vignette */
-        body::after {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.8) 100%);
-            pointer-events: none;
-            z-index: 9998;
-        }
-
-        /* ── HEADER ── */
-        .header {
-            padding: 12px 20px;
+        /* ── TOPBAR ── */
+        .topbar {
+            position: relative; z-index: 10; flex-shrink: 0;
+            display: flex; align-items: center; gap: 14px;
+            padding: 0 18px; height: 64px;
+            background: var(--surface);
             border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: var(--panel);
-            position: relative;
-            flex-shrink: 0;
+            backdrop-filter: blur(12px);
         }
 
-        .header::after {
-            content: '';
-            position: absolute;
-            bottom: -1px;
-            left: 0; right: 0;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, var(--green), transparent);
-            animation: scanH 3s linear infinite;
+        .group-avatar {
+            width: 40px; height: 40px; border-radius: 12px;
+            background: linear-gradient(135deg, #001a12, #003d28);
+            border: 1px solid rgba(0,229,160,0.22);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; flex-shrink: 0;
+            box-shadow: 0 0 16px rgba(0,229,160,0.08);
         }
 
-        @keyframes scanH {
-            0% { background-position: -100% 0; }
-            100% { background-position: 200% 0; }
+        .group-info { flex: 1; min-width: 0; }
+        .group-name {
+            font-family: 'Syne', sans-serif; font-weight: 800;
+            font-size: 16px; color: #fff; letter-spacing: 0.04em;
+        }
+        .group-sub {
+            font-size: 10px; color: var(--text-mid);
+            letter-spacing: 0.08em; display: flex;
+            align-items: center; gap: 6px; margin-top: 2px;
         }
 
-        .logo {
-            font-family: 'Orbitron', sans-serif;
-            font-weight: 900;
-            font-size: clamp(18px, 4vw, 26px);
-            letter-spacing: 0.3em;
-            color: var(--green);
-            text-shadow: 0 0 10px var(--green), 0 0 30px rgba(0,255,65,0.4);
-            animation: flicker 8s infinite;
+        .live-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--accent); box-shadow: 0 0 6px var(--accent);
+            animation: breathe 2s ease-in-out infinite;
+        }
+        @keyframes breathe { 0%,100%{opacity:1}50%{opacity:0.25} }
+
+        .topbar-right { display: flex; align-items: center; gap: 6px; }
+
+        .page-pill {
+            font-size: 10px; color: var(--text-mid);
+            background: var(--surface2); border: 1px solid var(--border-hi);
+            border-radius: 20px; padding: 3px 10px; letter-spacing: 0.06em;
         }
 
-        @keyframes flicker {
-            0%,95%,100% { opacity: 1; }
-            96% { opacity: 0.85; }
-            97% { opacity: 1; }
-            98% { opacity: 0.7; }
-            99% { opacity: 1; }
+        .icon-btn {
+            width: 34px; height: 34px; border-radius: 9px;
+            background: transparent; border: 1px solid var(--border);
+            color: var(--text-mid); cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; transition: all 0.15s; text-decoration: none;
+            font-family: 'DM Mono', monospace;
+        }
+        .icon-btn:hover {
+            background: var(--surface2); border-color: var(--border-hi); color: var(--text);
         }
 
-        .header-meta {
-            font-size: 11px;
-            color: var(--green-dim);
-            text-align: right;
-            line-height: 1.6;
+        /* ── FEED ── */
+        .feed {
+            flex: 1; overflow-y: auto; overflow-x: hidden;
+            padding: 20px 16px 12px;
+            display: flex; flex-direction: column; gap: 2px;
+            position: relative; z-index: 1;
+        }
+        .feed::-webkit-scrollbar { width: 3px; }
+        .feed::-webkit-scrollbar-track { background: transparent; }
+        .feed::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 2px; }
+
+        .date-sep {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 0 14px; color: var(--text-dim);
+            font-size: 10px; letter-spacing: 0.15em;
+        }
+        .date-sep::before, .date-sep::after {
+            content: ''; flex: 1; height: 1px; background: var(--border);
         }
 
-        .status-dot {
-            display: inline-block;
-            width: 7px; height: 7px;
-            border-radius: 50%;
-            background: var(--green);
-            box-shadow: 0 0 6px var(--green);
-            animation: pulse 1.5s ease-in-out infinite;
-            vertical-align: middle;
-            margin-right: 4px;
+        /* ── MESSAGE ROWS ── */
+        .msg-row {
+            display: flex; align-items: flex-end; gap: 10px;
+            padding: 1px 0;
+            animation: fadeUp 0.2s ease-out both;
+        }
+        @keyframes fadeUp {
+            from { opacity:0; transform:translateY(8px); }
+            to   { opacity:1; transform:translateY(0); }
         }
 
-        @keyframes pulse {
-            0%,100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.4; transform: scale(0.8); }
+        .msg-row.sent { flex-direction: row-reverse; }
+
+        /* Avatar */
+        .avatar {
+            width: 33px; height: 33px; border-radius: 10px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Syne', sans-serif; font-weight: 800;
+            font-size: 10px; letter-spacing: 0.06em; margin-bottom: 1px;
+        }
+        .msg-row:not(.first-in-group) .avatar { visibility: hidden; }
+
+        /* Bubble wrap */
+        .bubble-wrap { display: flex; flex-direction: column; gap: 2px; max-width: min(72%,500px); }
+        .sent .bubble-wrap { align-items: flex-end; }
+
+        .sender-label {
+            font-size: 10px; font-weight: 500; letter-spacing: 0.1em;
+            padding: 0 4px; margin-bottom: 2px;
+        }
+        .msg-row:not(.first-in-group) .sender-label { display: none; }
+
+        .bubble {
+            padding: 9px 14px; border-radius: 16px;
+            font-size: 13.5px; line-height: 1.58; word-break: break-word;
         }
 
-        /* ── NAV BAR ── */
-        .nav-bar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 6px 12px;
-            border-bottom: 1px solid var(--border);
-            background: rgba(0,10,0,0.8);
-            font-size: 11px;
-            color: var(--green-dim);
-            flex-shrink: 0;
-            gap: 8px;
+        .received .bubble {
+            background: var(--surface2); border: 1px solid var(--border);
+            color: var(--text); border-bottom-left-radius: 5px;
+        }
+        .sent .bubble {
+            background: linear-gradient(135deg, #002e1e, #004d34);
+            border: 1px solid rgba(0,229,160,0.18);
+            color: #dffff4; border-bottom-right-radius: 5px;
         }
 
-        .nav-bar a { text-decoration: none; }
+        /* Color palette per user */
+        .avatar[data-c="0"]  { background:rgba(0,229,160,0.1);  color:var(--d0); border:1px solid rgba(0,229,160,0.2); }
+        .avatar[data-c="1"]  { background:rgba(0,170,255,0.1);  color:var(--d1); border:1px solid rgba(0,170,255,0.2); }
+        .avatar[data-c="2"]  { background:rgba(255,0,170,0.1);  color:var(--d2); border:1px solid rgba(255,0,170,0.2); }
+        .avatar[data-c="3"]  { background:rgba(255,170,0,0.1);  color:var(--d3); border:1px solid rgba(255,170,0,0.2); }
+        .avatar[data-c="4"]  { background:rgba(170,0,255,0.1);  color:var(--d4); border:1px solid rgba(170,0,255,0.2); }
+        .avatar[data-c="5"]  { background:rgba(0,255,170,0.1);  color:var(--d5); border:1px solid rgba(0,255,170,0.2); }
+        .avatar[data-c="6"]  { background:rgba(255,68,68,0.1);  color:var(--d6); border:1px solid rgba(255,68,68,0.2); }
+        .avatar[data-c="7"]  { background:rgba(68,170,255,0.1); color:var(--d7); border:1px solid rgba(68,170,255,0.2); }
 
-        .btn {
-            background: transparent;
-            color: var(--green);
-            border: 1px solid var(--green-dim);
-            padding: 5px 12px;
-            font-family: 'Share Tech Mono', monospace;
-            font-size: 11px;
-            cursor: pointer;
-            letter-spacing: 0.1em;
-            transition: all 0.15s;
-            position: relative;
-            overflow: hidden;
+        .sender-label[data-c="0"] { color:var(--d0); }
+        .sender-label[data-c="1"] { color:var(--d1); }
+        .sender-label[data-c="2"] { color:var(--d2); }
+        .sender-label[data-c="3"] { color:var(--d3); }
+        .sender-label[data-c="4"] { color:var(--d4); }
+        .sender-label[data-c="5"] { color:var(--d5); }
+        .sender-label[data-c="6"] { color:var(--d6); }
+        .sender-label[data-c="7"] { color:var(--d7); }
+
+        /* ── COMPOSER ── */
+        .composer {
+            flex-shrink: 0; position: relative; z-index: 10;
+            padding: 12px 14px 16px;
+            background: var(--surface); border-top: 1px solid var(--border);
         }
 
-        .btn::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: var(--green-glow);
-            transform: scaleX(0);
-            transform-origin: left;
-            transition: transform 0.2s;
+        .composer form {
+            display: flex; align-items: center; gap: 10px;
+            background: var(--surface2); border: 1px solid var(--border-hi);
+            border-radius: 14px; padding: 7px 7px 7px 16px;
+            transition: border-color .2s, box-shadow .2s;
+        }
+        .composer form:focus-within {
+            border-color: rgba(0,229,160,0.28);
+            box-shadow: 0 0 0 3px rgba(0,229,160,0.06);
         }
 
-        .btn:hover::before { transform: scaleX(1); }
-        .btn:hover {
-            border-color: var(--green);
-            box-shadow: 0 0 8px rgba(0,255,65,0.3);
-            color: #fff;
+        .composer input {
+            flex: 1; background: transparent; border: none; outline: none;
+            color: var(--text); font-family: 'DM Mono', monospace;
+            font-size: 13.5px; caret-color: var(--accent);
         }
-        .btn:active { transform: scale(0.96); }
-
-        .page-info {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 10px;
-            color: var(--green-dim);
-            letter-spacing: 0.15em;
-        }
-
-        /* ── CHAT CONTAINER ── */
-        .chat-container {
-            flex: 1;
-            overflow-y: auto;
-            padding: 16px 14px 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            scroll-behavior: smooth;
-        }
-
-        .chat-container::-webkit-scrollbar { width: 4px; }
-        .chat-container::-webkit-scrollbar-track { background: transparent; }
-        .chat-container::-webkit-scrollbar-thumb { background: var(--green-dim); border-radius: 2px; }
-
-        /* ── MESSAGE ── */
-        .msg {
-            max-width: 82%;
-            padding: 9px 13px;
-            border-radius: 2px;
-            position: relative;
-            animation: msgIn 0.2s ease-out;
-            line-height: 1.5;
-            font-size: 13px;
-            word-break: break-word;
-        }
-
-        @keyframes msgIn {
-            from { opacity: 0; transform: translateY(6px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Received */
-        .received {
-            align-self: flex-start;
-            background: rgba(0, 255, 65, 0.04);
-            border: 1px solid rgba(0, 255, 65, 0.2);
-            border-left: 2px solid var(--green);
-        }
-
-        .received::before {
-            content: '';
-            position: absolute;
-            top: 0; left: -6px;
-            width: 0; height: 0;
-            border-top: 6px solid transparent;
-            border-right: 6px solid rgba(0,255,65,0.2);
-        }
-
-        /* Sent */
-        .sent {
-            align-self: flex-end;
-            background: rgba(0, 132, 255, 0.06);
-            border: 1px solid rgba(0, 132, 255, 0.25);
-            border-right: 2px solid var(--blue);
-        }
-
-        .sent::after {
-            content: '';
-            position: absolute;
-            top: 0; right: -6px;
-            width: 0; height: 0;
-            border-top: 6px solid transparent;
-            border-left: 6px solid rgba(0,132,255,0.25);
-        }
-
-        .username {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 9px;
-            font-weight: 700;
-            color: var(--red);
-            letter-spacing: 0.12em;
-            text-shadow: 0 0 6px rgba(255,34,68,0.5);
-            display: block;
-            margin-bottom: 4px;
-        }
-
-        .sent .username { color: #4da6ff; text-shadow: 0 0 6px rgba(0,132,255,0.5); }
-
-        .msg-content { color: rgba(0,255,65,0.9); }
-
-        /* ── INPUT AREA ── */
-        .input-area {
-            flex-shrink: 0;
-            background: var(--panel);
-            border-top: 1px solid var(--border);
-            padding: 10px 12px;
-        }
-
-        .input-area form {
-            display: flex;
-            gap: 8px;
-            align-items: stretch;
-        }
-
-        .input-wrap {
-            flex: 1;
-            position: relative;
-        }
-
-        .input-wrap::before {
-            content: '> ';
-            position: absolute;
-            left: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--green-dim);
-            font-size: 13px;
-            pointer-events: none;
-        }
-
-        input[name="content"] {
-            width: 100%;
-            background: rgba(0, 255, 65, 0.04);
-            color: var(--green);
-            border: 1px solid rgba(0,255,65,0.25);
-            padding: 10px 12px 10px 28px;
-            font-family: 'Share Tech Mono', monospace;
-            font-size: 13px;
-            outline: none;
-            transition: border-color 0.2s, box-shadow 0.2s;
-            border-radius: 2px;
-            caret-color: var(--green);
-        }
-
-        input[name="content"]::placeholder { color: rgba(0,255,65,0.25); }
-
-        input[name="content"]:focus {
-            border-color: rgba(0,255,65,0.6);
-            box-shadow: 0 0 10px rgba(0,255,65,0.1), inset 0 0 8px rgba(0,255,65,0.04);
-        }
+        .composer input::placeholder { color: var(--text-dim); font-style: italic; }
 
         .send-btn {
-            background: var(--green);
-            color: #000;
-            border: none;
-            padding: 10px 18px;
-            font-family: 'Orbitron', sans-serif;
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 0.1em;
-            cursor: pointer;
-            transition: all 0.15s;
-            border-radius: 2px;
-            white-space: nowrap;
+            width: 36px; height: 36px; border-radius: 10px;
+            background: var(--accent); border: none; color: #000;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; flex-shrink: 0; transition: all .15s;
         }
+        .send-btn:hover { background: #fff; box-shadow: 0 0 14px rgba(0,229,160,0.4); transform: scale(1.05); }
+        .send-btn:active { transform: scale(.93); }
 
-        .send-btn:hover {
-            background: #fff;
-            box-shadow: 0 0 14px rgba(0,255,65,0.5);
+        .composer-foot {
+            display: flex; justify-content: center;
+            font-size: 9.5px; color: var(--text-dim);
+            letter-spacing: 0.12em; margin-top: 8px; gap: 8px;
         }
-
-        .send-btn:active { transform: scale(0.95); }
-
-        /* ── CORNER DECORATIONS ── */
-        .corner-tl, .corner-br {
-            position: fixed;
-            width: 30px; height: 30px;
-            pointer-events: none;
-            z-index: 100;
-            opacity: 0.4;
-        }
-        .corner-tl {
-            top: 0; left: 0;
-            border-top: 2px solid var(--green);
-            border-left: 2px solid var(--green);
-        }
-        .corner-br {
-            bottom: 0; right: 0;
-            border-bottom: 2px solid var(--green);
-            border-right: 2px solid var(--green);
-        }
-
-        /* ── EMPTY STATE ── */
-        .empty-state {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            opacity: 0.3;
-            font-size: 12px;
-            letter-spacing: 0.2em;
-            gap: 10px;
-        }
-
-        .empty-state .big { font-family: 'Orbitron', sans-serif; font-size: 20px; }
+        .composer-foot span { opacity: 0.5; }
     </style>
 </head>
 <body>
+<div class="shell">
 
-    <div class="corner-tl"></div>
-    <div class="corner-br"></div>
-
-    <!-- HEADER -->
-    <div class="header">
-        <div class="logo">◈ DALEKS</div>
-        <div class="header-meta">
-            <span class="status-dot"></span>LIVE FEED<br>
-            <span id="clock"></span>
+    <!-- TOPBAR -->
+    <header class="topbar">
+        <div class="group-avatar">◈</div>
+        <div class="group-info">
+            <div class="group-name">DALEKS</div>
+            <div class="group-sub">
+                <span class="live-dot"></span>
+                <span>secure channel · encrypted</span>
+            </div>
         </div>
-    </div>
+        <div class="topbar-right">
+            <span class="page-pill">pg&nbsp;{{ page }}</span>
+            <a href="/" class="icon-btn" title="Refresh">↻</a>
+            <a href="{{ url_for('home', page=page + 1) }}" class="icon-btn" title="Older">‹</a>
+        </div>
+    </header>
 
-    <!-- NAV -->
-    <div class="nav-bar">
-        <a href="/"><button class="btn">⟳ REFRESH</button></a>
-        <span class="page-info">PAGE_{{ page }}</span>
-        <a href="{{ url_for('home', page=page + 1) }}"><button class="btn">OLDER →</button></a>
-    </div>
+    <!-- FEED -->
+    <main class="feed" id="chatBox">
+        <div class="date-sep">daleks · secure channel</div>
 
-    <!-- MESSAGES -->
-    <div class="chat-container" id="chatBox">
         {% for post in posts %}
-            <div class="msg {{ 'sent' if post['username'] == session.username else 'received' }}">
-                <span class="username">{{ post['username'] }}</span>
-                <span class="msg-content">{{ post['content'] }}</span>
+        <div class="msg-row {{ 'sent' if post['username'] == session.username else 'received' }} first-in-group"
+             data-user="{{ post['username'] }}">
+            <div class="avatar" data-c="0">{{ post['username'][:2] | upper }}</div>
+            <div class="bubble-wrap">
+                <div class="sender-label" data-c="0">{{ post['username'] }}</div>
+                <div class="bubble">{{ post['content'] }}</div>
             </div>
+        </div>
+        {% else %}
+        <div data-placeholder style="flex:1;display:flex;align-items:center;justify-content:center;
+                    flex-direction:column;gap:10px;color:#4a5568;font-size:12px;letter-spacing:.1em;">
+            <div style="font-size:28px;opacity:.3">◈</div>
+            <span>no transmissions yet</span>
+        </div>
         {% endfor %}
-    </div>
+    </main>
 
-    <!-- INPUT -->
-    <div class="input-area">
+    <!-- COMPOSER -->
+    <footer class="composer">
         <form action="/post" method="POST">
-            <div class="input-wrap">
-                <input name="content" placeholder="transmit message..." required autocomplete="off" maxlength="500">
-            </div>
-            <button type="submit" class="send-btn">SEND</button>
+            <input name="content" placeholder="transmit to the collective…"
+                   required autocomplete="off" maxlength="500">
+            <button type="submit" class="send-btn">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2.5"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13"/>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                </svg>
+            </button>
         </form>
-    </div>
+        <div class="composer-foot">
+            <span>DALEKS</span>·<span>E2E ENCRYPTED</span>·<span id="clock"></span>
+        </div>
+    </footer>
 
-    <script>
-        // Auto-scroll to bottom
-        const chatBox = document.getElementById("chatBox");
-        chatBox.scrollTop = chatBox.scrollHeight;
+</div>
+<script>
+    // Clock
+    const clockEl = document.getElementById('clock');
+    function tick() {
+        const d = new Date();
+        clockEl.textContent = d.toISOString().replace('T',' ').slice(0,19)+' UTC';
+    }
+    tick(); setInterval(tick, 1000);
 
-        // Live clock
-        function updateClock() {
-            const now = new Date();
-            document.getElementById("clock").textContent =
-                now.toUTCString().replace("GMT","UTC").split(" ").slice(1).join(" ");
-        }
-        updateClock();
-        setInterval(updateClock, 1000);
+    // Deterministic color index from username
+    function colorIdx(str) {
+        let h = 0;
+        for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
+        return Math.abs(h) % 8;
+    }
 
-        // Auto-refresh every 1 second (preserve scroll position)
-        let userScrolled = false;
-        chatBox.addEventListener("scroll", () => {
-            const atBottom = chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight < 40;
-            userScrolled = !atBottom;
+    // Process messages: assign colors, group consecutive same-user rows
+    function processMessages(root) {
+        const rows = root.querySelectorAll('.msg-row');
+        let lastUser = null;
+        rows.forEach(row => {
+            const user = row.dataset.user || '';
+            const c = colorIdx(user);
+            row.querySelector('.avatar')?.setAttribute('data-c', c);
+            row.querySelector('.sender-label')?.setAttribute('data-c', c);
+            if (user === lastUser) {
+                row.classList.remove('first-in-group');
+            } else {
+                row.classList.add('first-in-group');
+            }
+            lastUser = user;
         });
+    }
 
-        setInterval(() => {
-            fetch(window.location.href)
-                .then(r => r.text())
-                .then(html => {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, "text/html");
-                    const newBox = doc.getElementById("chatBox");
-                    if (newBox && newBox.innerHTML !== chatBox.innerHTML) {
-                        chatBox.innerHTML = newBox.innerHTML;
-                        if (!userScrolled) chatBox.scrollTop = chatBox.scrollHeight;
-                    }
-                })
-                .catch(() => {});
-        }, 1000);
-    </script>
+    const chatBox = document.getElementById('chatBox');
+    processMessages(chatBox);
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+    let userScrolled = false;
+    chatBox.addEventListener('scroll', () => {
+        userScrolled = chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight > 60;
+    });
+
+    // Fingerprint a message row so we can deduplicate
+    function fingerprint(row) {
+        const user = row.dataset.user || '';
+        const text = row.querySelector('.bubble')?.textContent?.trim() || '';
+        return user + '||' + text;
+    }
+
+    // Build set of fingerprints already in the DOM
+    function currentFingerprints() {
+        const set = new Set();
+        chatBox.querySelectorAll('.msg-row').forEach(r => set.add(fingerprint(r)));
+        return set;
+    }
+
+    // Silent auto-refresh every 1s — surgically appends only new messages
+    setInterval(() => {
+        fetch(window.location.href)
+            .then(r => r.text())
+            .then(html => {
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const fresh = doc.getElementById('chatBox');
+                if (!fresh) return;
+
+                const known = currentFingerprints();
+                const incoming = [...fresh.querySelectorAll('.msg-row')];
+
+                // Find messages we don't have yet (appear at the end of the fresh list)
+                const newRows = incoming.filter(r => !known.has(fingerprint(r)));
+                if (newRows.length === 0) return;
+
+                // Remove empty-state placeholder if present
+                const placeholder = chatBox.querySelector('[data-placeholder]');
+                if (placeholder) placeholder.remove();
+
+                // Append only the new rows — zero flicker
+                newRows.forEach(row => chatBox.appendChild(row));
+
+                // Re-run grouping on the whole feed so borders stay correct
+                processMessages(chatBox);
+
+                if (!userScrolled) chatBox.scrollTop = chatBox.scrollHeight;
+            }).catch(()=>{});
+    }, 1000);
+</script>
 </body>
 </html>
