@@ -62,6 +62,29 @@ def home():
 
     return render_template('home.html', posts=posts[::-1], page=page)
 
+# ── POLL (lightweight JSON endpoint for live updates) ──
+@app.route('/poll')
+def poll():
+    """Returns only new messages since a given post id. Tiny payload, no HTML rendering."""
+    if 'username' not in session:
+        return {'error': 'unauthorized'}, 401
+
+    since_id = request.args.get('since', 0, type=int)
+
+    conn = get_db()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                'SELECT id, username, content FROM posts '
+                'WHERE id > %s ORDER BY id ASC LIMIT 30',
+                (since_id,)
+            )
+            rows = cur.fetchall()
+    finally:
+        release_db(conn)
+
+    return {'messages': [dict(r) for r in rows]}
+
 # ── POST ──
 @app.route('/post', methods=['POST'])
 def add_post():
