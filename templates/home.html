@@ -234,7 +234,7 @@
         .composer-foot span { opacity: 0.5; }
     </style>
 </head>
-<body>
+<body data-me="{{ session.username }}">
 <div class="shell">
 
     <!-- TOPBAR -->
@@ -260,7 +260,7 @@
 
         {% for post in posts %}
         <div class="msg-row {{ 'sent' if post['username'] == session.username else 'received' }} first-in-group"
-             data-user="{{ post['username'] }}">
+             data-user="{{ post['username'] }}" data-id="{{ post['id'] }}">
             <div class="avatar" data-c="0">{{ post['username'][:2] | upper }}</div>
             <div class="bubble-wrap">
                 <div class="sender-label" data-c="0">{{ post['username'] }}</div>
@@ -339,49 +339,58 @@
         userScrolled = chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight > 60;
     });
 
-    // Fingerprint a message row so we can deduplicate
-    function fingerprint(row) {
-        const user = row.dataset.user || '';
-        const text = row.querySelector('.bubble')?.textContent?.trim() || '';
-        return user + '||' + text;
+    // Track the highest post id we've seen (set from initial server-rendered messages)
+    let lastId = 0;
+    chatBox.querySelectorAll('.msg-row[data-id]').forEach(r => {
+        const id = parseInt(r.dataset.id) || 0;
+        if (id > lastId) lastId = id;
+    });
+
+    // Build a new message DOM row from a JSON message object
+    const ME = document.body.dataset.me || '';
+    function buildRow(msg) {
+        const isSent = msg.username === ME;
+        const c = colorIdx(msg.username);
+        const initials = msg.username.slice(0, 2).toUpperCase();
+
+        const row = document.createElement('div');
+        row.className = 'msg-row ' + (isSent ? 'sent' : 'received') + ' first-in-group';
+        row.dataset.user = msg.username;
+        row.dataset.id   = msg.id;
+        row.innerHTML = `
+            <div class="avatar" data-c="${c}">${initials}</div>
+            <div class="bubble-wrap">
+                <div class="sender-label" data-c="${c}">${msg.username}</div>
+                <div class="bubble">${escapeHtml(msg.content)}</div>
+            </div>`;
+        return row;
     }
 
-    // Build set of fingerprints already in the DOM
-    function currentFingerprints() {
-        const set = new Set();
-        chatBox.querySelectorAll('.msg-row').forEach(r => set.add(fingerprint(r)));
-        return set;
+    function escapeHtml(str) {
+        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                  .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     }
 
-    // Silent auto-refresh every 1s — surgically appends only new messages
+    // Poll /poll?since=N — tiny JSON response, no HTML rendering on server
     setInterval(() => {
-        fetch(window.location.href)
-            .then(r => r.text())
-            .then(html => {
-                const doc = new DOMParser().parseFromString(html, 'text/html');
-                const fresh = doc.getElementById('chatBox');
-                if (!fresh) return;
-
-                const known = currentFingerprints();
-                const incoming = [...fresh.querySelectorAll('.msg-row')];
-
-                // Find messages we don't have yet (appear at the end of the fresh list)
-                const newRows = incoming.filter(r => !known.has(fingerprint(r)));
-                if (newRows.length === 0) return;
+        fetch('/poll?since=' + lastId)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.messages || data.messages.length === 0) return;
 
                 // Remove empty-state placeholder if present
                 const placeholder = chatBox.querySelector('[data-placeholder]');
                 if (placeholder) placeholder.remove();
 
-                // Append only the new rows — zero flicker
-                newRows.forEach(row => chatBox.appendChild(row));
+                data.messages.forEach(msg => {
+                    if (msg.id > lastId) lastId = msg.id;
+                    chatBox.appendChild(buildRow(msg));
+                });
 
-                // Re-run grouping on the whole feed so borders stay correct
                 processMessages(chatBox);
-
                 if (!userScrolled) chatBox.scrollTop = chatBox.scrollHeight;
-            }).catch(()=>{});
-    }, 1000);
+            }).catch(() => {});
+    }, 2000); // 2s is plenty — reduces server load by 50% vs 1s
 </script>
 </body>
 </html>
