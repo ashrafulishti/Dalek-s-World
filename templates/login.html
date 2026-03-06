@@ -1,7 +1,26 @@
-<h1>Login</h1>
-<form method="POST">
-    Username: <input name="username"><br>
-    Password: <input name="password" type="password"><br>
-    <button>Login</button>
-</form>
-<a href="/register">Don't have an account? Register here</a>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { background: #000; color: #0f0; font-family: 'Courier Prime', monospace; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .box { border: 1px solid #0f0; padding: 30px; width: 80%; max-width: 300px; text-align: center; }
+        input { width: 100%; background: #000; color: #0f0; border: 1px solid #0f0; padding: 10px; margin: 10px 0; }
+        button { width: 100%; background: #0f0; color: #000; border: none; padding: 10px; }
+        a { color: #0f0; text-decoration: none; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h1>DALEK'S WORLD</h1>
+        <small>by ashrafulishti</small>
+        <form method="POST">
+            <input name="username" placeholder="USER_ID" required>
+            <input name="password" type="password" placeholder="ACCESS_KEY" required>
+            <button>ACCESS SYSTEM</button>
+        </form>
+        <br>
+        <a href="/register">OR INITIALIZE NEW ACCOUNT</a>
+    </div>
+</body>
+</html>
