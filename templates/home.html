@@ -1,91 +1,448 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime&display=swap" rel="stylesheet">
+    <title>DALEKS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        body { background: #000; color: #0f0; font-family: 'Courier Prime', monospace; margin: 0; display: flex; flex-direction: column; height: 100vh; }
-        body { 
-            background: #000; 
-            color: #0f0; 
-            font-family: 'Courier Prime', monospace; 
-            margin: 0; 
-            display: flex; 
-            flex-direction: column; 
-            height: 100vh; 
+        :root {
+            --green: #00ff41;
+            --green-dim: #00aa2a;
+            --green-glow: rgba(0, 255, 65, 0.15);
+            --red: #ff2244;
+            --blue: #0084ff;
+            --bg: #000;
+            --panel: #050f05;
+            --border: rgba(0, 255, 65, 0.3);
         }
-        .header { text-align: center; padding: 15px; border-bottom: 1px solid #0f0; }
-        .refresh-bar { display: flex; justify-content: space-between; padding: 10px; font-size: 12px; }
-        .chat-container { flex: 1; overflow-y: auto; padding: 15px; padding-bottom: 80px; display: flex; flex-direction: column; }
-        .msg { border: 1px solid #0f0; padding: 10px; margin-bottom: 10px; border-radius: 5px; max-width: 85%; }
-        
-        /* Main chat area - scrollable */
-        .chat-container { 
-            flex: 1; 
-            overflow-y: auto; 
-            padding: 15px; 
-            display: flex; 
-            flex-direction: column; 
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: var(--bg);
+            color: var(--green);
+            font-family: 'Share Tech Mono', monospace;
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
         }
-        
-        .msg { 
-            border: 1px solid #0f0; 
-            padding: 10px; 
-            margin-bottom: 10px; 
-            border-radius: 5px; 
-            max-width: 85%; 
+
+        /* Scanline overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 255, 65, 0.015) 2px,
+                rgba(0, 255, 65, 0.015) 4px
+            );
+            pointer-events: none;
+            z-index: 9999;
         }
-        .sent { align-self: flex-end; border-color: #0084ff; }
-        .received { align-self: flex-start; }
-        .username { color: #ff0000; font-weight: bold; } /* Red Username */
-        .input-area { position: fixed; bottom: 0; width: 100%; background: #000; padding: 10px; border-top: 1px solid #0f0; }
-        .username { color: #ff0000; font-weight: bold; } /* Red Usernames */
-        
-        .input-area { 
-            position: fixed; 
-            bottom: 0; 
-            width: 100%; 
-            background: #000; 
-            padding: 10px; 
-            border-top: 1px solid #0f0; 
-            box-sizing: border-box; 
+
+        /* CRT vignette */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.8) 100%);
+            pointer-events: none;
+            z-index: 9998;
         }
-        input { width: 70%; background: #000; color: #0f0; border: 1px solid #0f0; padding: 10px; }
-        button { background: #0f0; color: #000; border: none; padding: 10px; cursor: pointer; }
+
+        /* ── HEADER ── */
+        .header {
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--panel);
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--green), transparent);
+            animation: scanH 3s linear infinite;
+        }
+
+        @keyframes scanH {
+            0% { background-position: -100% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .logo {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 900;
+            font-size: clamp(18px, 4vw, 26px);
+            letter-spacing: 0.3em;
+            color: var(--green);
+            text-shadow: 0 0 10px var(--green), 0 0 30px rgba(0,255,65,0.4);
+            animation: flicker 8s infinite;
+        }
+
+        @keyframes flicker {
+            0%,95%,100% { opacity: 1; }
+            96% { opacity: 0.85; }
+            97% { opacity: 1; }
+            98% { opacity: 0.7; }
+            99% { opacity: 1; }
+        }
+
+        .header-meta {
+            font-size: 11px;
+            color: var(--green-dim);
+            text-align: right;
+            line-height: 1.6;
+        }
+
+        .status-dot {
+            display: inline-block;
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 6px var(--green);
+            animation: pulse 1.5s ease-in-out infinite;
+            vertical-align: middle;
+            margin-right: 4px;
+        }
+
+        @keyframes pulse {
+            0%,100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.8); }
+        }
+
+        /* ── NAV BAR ── */
+        .nav-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 12px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(0,10,0,0.8);
+            font-size: 11px;
+            color: var(--green-dim);
+            flex-shrink: 0;
+            gap: 8px;
+        }
+
+        .nav-bar a { text-decoration: none; }
+
+        .btn {
+            background: transparent;
+            color: var(--green);
+            border: 1px solid var(--green-dim);
+            padding: 5px 12px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px;
+            cursor: pointer;
+            letter-spacing: 0.1em;
+            transition: all 0.15s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: var(--green-glow);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover::before { transform: scaleX(1); }
+        .btn:hover {
+            border-color: var(--green);
+            box-shadow: 0 0 8px rgba(0,255,65,0.3);
+            color: #fff;
+        }
+        .btn:active { transform: scale(0.96); }
+
+        .page-info {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 10px;
+            color: var(--green-dim);
+            letter-spacing: 0.15em;
+        }
+
+        /* ── CHAT CONTAINER ── */
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 14px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            scroll-behavior: smooth;
+        }
+
+        .chat-container::-webkit-scrollbar { width: 4px; }
+        .chat-container::-webkit-scrollbar-track { background: transparent; }
+        .chat-container::-webkit-scrollbar-thumb { background: var(--green-dim); border-radius: 2px; }
+
+        /* ── MESSAGE ── */
+        .msg {
+            max-width: 82%;
+            padding: 9px 13px;
+            border-radius: 2px;
+            position: relative;
+            animation: msgIn 0.2s ease-out;
+            line-height: 1.5;
+            font-size: 13px;
+            word-break: break-word;
+        }
+
+        @keyframes msgIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Received */
+        .received {
+            align-self: flex-start;
+            background: rgba(0, 255, 65, 0.04);
+            border: 1px solid rgba(0, 255, 65, 0.2);
+            border-left: 2px solid var(--green);
+        }
+
+        .received::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -6px;
+            width: 0; height: 0;
+            border-top: 6px solid transparent;
+            border-right: 6px solid rgba(0,255,65,0.2);
+        }
+
+        /* Sent */
+        .sent {
+            align-self: flex-end;
+            background: rgba(0, 132, 255, 0.06);
+            border: 1px solid rgba(0, 132, 255, 0.25);
+            border-right: 2px solid var(--blue);
+        }
+
+        .sent::after {
+            content: '';
+            position: absolute;
+            top: 0; right: -6px;
+            width: 0; height: 0;
+            border-top: 6px solid transparent;
+            border-left: 6px solid rgba(0,132,255,0.25);
+        }
+
+        .username {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--red);
+            letter-spacing: 0.12em;
+            text-shadow: 0 0 6px rgba(255,34,68,0.5);
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .sent .username { color: #4da6ff; text-shadow: 0 0 6px rgba(0,132,255,0.5); }
+
+        .msg-content { color: rgba(0,255,65,0.9); }
+
+        /* ── INPUT AREA ── */
+        .input-area {
+            flex-shrink: 0;
+            background: var(--panel);
+            border-top: 1px solid var(--border);
+            padding: 10px 12px;
+        }
+
+        .input-area form {
+            display: flex;
+            gap: 8px;
+            align-items: stretch;
+        }
+
+        .input-wrap {
+            flex: 1;
+            position: relative;
+        }
+
+        .input-wrap::before {
+            content: '> ';
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--green-dim);
+            font-size: 13px;
+            pointer-events: none;
+        }
+
+        input[name="content"] {
+            width: 100%;
+            background: rgba(0, 255, 65, 0.04);
+            color: var(--green);
+            border: 1px solid rgba(0,255,65,0.25);
+            padding: 10px 12px 10px 28px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            border-radius: 2px;
+            caret-color: var(--green);
+        }
+
+        input[name="content"]::placeholder { color: rgba(0,255,65,0.25); }
+
+        input[name="content"]:focus {
+            border-color: rgba(0,255,65,0.6);
+            box-shadow: 0 0 10px rgba(0,255,65,0.1), inset 0 0 8px rgba(0,255,65,0.04);
+        }
+
+        .send-btn {
+            background: var(--green);
+            color: #000;
+            border: none;
+            padding: 10px 18px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            transition: all 0.15s;
+            border-radius: 2px;
+            white-space: nowrap;
+        }
+
+        .send-btn:hover {
+            background: #fff;
+            box-shadow: 0 0 14px rgba(0,255,65,0.5);
+        }
+
+        .send-btn:active { transform: scale(0.95); }
+
+        /* ── CORNER DECORATIONS ── */
+        .corner-tl, .corner-br {
+            position: fixed;
+            width: 30px; height: 30px;
+            pointer-events: none;
+            z-index: 100;
+            opacity: 0.4;
+        }
+        .corner-tl {
+            top: 0; left: 0;
+            border-top: 2px solid var(--green);
+            border-left: 2px solid var(--green);
+        }
+        .corner-br {
+            bottom: 0; right: 0;
+            border-bottom: 2px solid var(--green);
+            border-right: 2px solid var(--green);
+        }
+
+        /* ── EMPTY STATE ── */
+        .empty-state {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.3;
+            font-size: 12px;
+            letter-spacing: 0.2em;
+            gap: 10px;
+        }
+
+        .empty-state .big { font-family: 'Orbitron', sans-serif; font-size: 20px; }
     </style>
-@@ -21,27 +53,32 @@
+</head>
+<body>
+
+    <div class="corner-tl"></div>
+    <div class="corner-br"></div>
+
+    <!-- HEADER -->
     <div class="header">
-        <h1>DALEKS</h1>
-    </div>
-    
-    <div class="refresh-bar">
-        <a href="/"><button>🔄 REFRESH</button></a>
-        <span>Page {{ page }}</span>
-        <a href="{{ url_for('home', page=page + 1) }}"><button>OLDER ➡️</button></a>
+        <div class="logo">◈ DALEKS</div>
+        <div class="header-meta">
+            <span class="status-dot"></span>LIVE FEED<br>
+            <span id="clock"></span>
+        </div>
     </div>
 
+    <!-- NAV -->
+    <div class="nav-bar">
+        <a href="/"><button class="btn">⟳ REFRESH</button></a>
+        <span class="page-info">PAGE_{{ page }}</span>
+        <a href="{{ url_for('home', page=page + 1) }}"><button class="btn">OLDER →</button></a>
+    </div>
+
+    <!-- MESSAGES -->
     <div class="chat-container" id="chatBox">
         {% for post in posts %}
             <div class="msg {{ 'sent' if post['username'] == session.username else 'received' }}">
-                <span class="username">{{ post['username'] }}</span><br>{{ post['content'] }}
+                <span class="username">{{ post['username'] }}</span>
+                <span class="msg-content">{{ post['content'] }}</span>
             </div>
         {% endfor %}
-        
-        <div style="height: 80px;"></div>
     </div>
 
+    <!-- INPUT -->
     <div class="input-area">
         <form action="/post" method="POST">
-            <input name="content" placeholder="System command..." required autocomplete="off">
-            <button>SEND</button>
-            <button type="submit">SEND</button>
+            <div class="input-wrap">
+                <input name="content" placeholder="transmit message..." required autocomplete="off" maxlength="500">
+            </div>
+            <button type="submit" class="send-btn">SEND</button>
         </form>
     </div>
 
     <script>
-        // Auto-scroll to bottom on load
-        // Auto-scroll to the bottom of the feed
+        // Auto-scroll to bottom
         const chatBox = document.getElementById("chatBox");
         chatBox.scrollTop = chatBox.scrollHeight;
+
+        // Live clock
+        function updateClock() {
+            const now = new Date();
+            document.getElementById("clock").textContent =
+                now.toUTCString().replace("GMT","UTC").split(" ").slice(1).join(" ");
+        }
+        updateClock();
+        setInterval(updateClock, 1000);
+
+        // Auto-refresh every 1 second (preserve scroll position)
+        let userScrolled = false;
+        chatBox.addEventListener("scroll", () => {
+            const atBottom = chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight < 40;
+            userScrolled = !atBottom;
+        });
+
+        setInterval(() => {
+            fetch(window.location.href)
+                .then(r => r.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, "text/html");
+                    const newBox = doc.getElementById("chatBox");
+                    if (newBox && newBox.innerHTML !== chatBox.innerHTML) {
+                        chatBox.innerHTML = newBox.innerHTML;
+                        if (!userScrolled) chatBox.scrollTop = chatBox.scrollHeight;
+                    }
+                })
+                .catch(() => {});
+        }, 1000);
     </script>
+</body>
+</html>
