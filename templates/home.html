@@ -3,31 +3,60 @@
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: sans-serif; background: #f4f4f9; padding: 10px; }
-        .chat-container { max-width: 500px; margin: auto; }
-        .feed { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+        /* Essential for sticky layout */
+        body, html { height: 100%; margin: 0; display: flex; flex-direction: column; }
+        
+        .chat-container { 
+            flex: 1; 
+            overflow-y: auto; /* This allows messages to scroll */
+            padding: 20px;
+            display: flex; 
+            flex-direction: column; 
+            gap: 10px;
+            padding-bottom: 80px; /* Prevents input from covering last message */
+        }
+
+        .input-area { 
+            position: fixed; 
+            bottom: 0; 
+            width: 100%; 
+            background: #f4f4f9; 
+            padding: 10px;
+            border-top: 1px solid #ccc;
+        }
+
+        /* Message styles */
         .msg { padding: 10px 15px; border-radius: 15px; max-width: 80%; }
         .sent { align-self: flex-end; background: #0084ff; color: white; }
         .received { align-self: flex-start; background: #e5e5ea; }
-        input { width: 100%; padding: 12px; margin-bottom: 5px; }
+        input { width: 90%; padding: 12px; }
     </style>
 </head>
 <body>
+
     <div class="chat-container">
-        <a href="/"><button>🔄 Refresh Feed</button></a>
-        <div class="feed">
-            {% for post in posts %}
-                <div class="msg {{ 'sent' if post['username'] == session.username else 'received' }}">
-                    <b>{{ post['username'] }}</b><br>
-                    {{ post['content'] }}
-                </div>
-            {% endfor %}
+        <div class="pagination">
+            {% if page > 1 %}
+                <a href="{{ url_for('home', page=page - 1) }}"><button>⬅️ Newer</button></a>
+            {% endif %}
+            <span>Page {{ page }}</span>
+            <a href="{{ url_for('home', page=page + 1) }}"><button>Older ➡️</button></a>
         </div>
+
+        {% for post in posts %}
+            <div class="msg {{ 'sent' if post['username'] == session.username else 'received' }}">
+                <b>{{ post['username'] }}</b><br>
+                {{ post['content'] }}
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="input-area">
         <form action="/post" method="POST">
             <input name="content" placeholder="Type..." required>
             <button>Send</button>
         </form>
-        <a href="/?page={{ page + 1 }}">Older Messages</a>
     </div>
+
 </body>
 </html>
