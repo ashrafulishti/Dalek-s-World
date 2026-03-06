@@ -2,12 +2,14 @@
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime&display=swap" rel="stylesheet">
     <style>
-        body { background: #000; color: #0f0; font-family: 'Courier Prime', monospace; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        .box { border: 1px solid #0f0; padding: 30px; width: 80%; max-width: 300px; text-align: center; }
-        input { width: 100%; background: #000; color: #0f0; border: 1px solid #0f0; padding: 10px; margin: 10px 0; }
-        button { width: 100%; background: #0f0; color: #000; border: none; padding: 10px; }
-        a { color: #0f0; text-decoration: none; font-size: 12px; }
+        body { background: #000; color: #0f0; font-family: 'Courier Prime', monospace; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .box { border: 1px solid #0f0; padding: 25px; width: 85%; max-width: 320px; text-align: center; }
+        h1 { font-size: 24px; margin-bottom: 5px; }
+        input { width: 100%; background: #000; color: #0f0; border: 1px solid #0f0; padding: 12px; margin: 10px 0; box-sizing: border-box; }
+        button { width: 100%; background: #0f0; color: #000; border: none; padding: 12px; font-weight: bold; cursor: pointer; }
+        a { color: #0f0; text-decoration: none; font-size: 13px; display: block; margin-top: 15px; }
     </style>
 </head>
 <body>
@@ -17,10 +19,9 @@
         <form method="POST">
             <input name="username" placeholder="USER_ID" required>
             <input name="password" type="password" placeholder="ACCESS_KEY" required>
-            <button>ACCESS SYSTEM</button>
+            <button type="submit">LOGIN_SYSTEM</button>
         </form>
-        <br>
-        <a href="/register">OR INITIALIZE NEW ACCOUNT</a>
+        <a href="/register">[ INITIALIZE NEW ACCOUNT ]</a>
     </div>
 </body>
 </html>
