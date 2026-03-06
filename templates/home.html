@@ -1,4 +1,5 @@
 <h1>Dalek Social</h1>
+
 {% if session.username %}
     <p>Hello {{ session.username }}! <a href="/logout">Logout</a></p>
     <form action="/post" method="POST">
@@ -10,10 +11,22 @@
 {% endif %}
 
 <h2>Feed:</h2>
+
 {% for post in posts %}
     <p>
         <b>{{ post['username'] }}</b> 
-        <small>at {{ post['created_at'] }}</small><br>
+        <small>at {{ post['created_at'].strftime('%Y-%m-%d %H:%M') }}</small><br>
         {{ post['content'] }}
     </p>
 {% endfor %}
+
+<hr>
+<div>
+    {% if page > 1 %}
+        <a href="/?page={{ page - 1 }}">&laquo; Previous</a>
+    {% endif %}
+
+    <span>Page {{ page }}</span>
+
+    <a href="/?page={{ page + 1 }}">Next &raquo;</a>
+</div>
