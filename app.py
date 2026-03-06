@@ -1,90 +1,148 @@
 import os
-import psycopg2
+import hashlib
 from flask import Flask, render_template, request, session, redirect, url_for
 from psycopg2.extras import RealDictCursor
+from psycopg2 import pool, IntegrityError
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'default-secret-key-123')
 
-def get_db():
-    return psycopg2.connect(os.environ.get('DATABASE_URL'))
+# ── Connection pool: reuses connections instead of creating one per request ──
+# min 2 connections kept alive, max 10 (tune to your plan's DB connection limit)
+db_pool = pool.ThreadedConnectionPool(
+    minconn=2,
+    maxconn=10,
+    dsn=os.environ.get('DATABASE_URL')
+)
 
+def get_db():
+    """Borrow a connection from the pool."""
+    return db_pool.getconn()
+
+def release_db(conn):
+    """Return connection to pool (does NOT close it)."""
+    db_pool.putconn(conn)
+
+def hash_password(password: str) -> str:
+    """Simple SHA-256 hash. Use bcrypt in production for real security."""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+# ── HOME ──
 @app.route('/')
 def home():
-    # 1. Force Login Check
     if 'username' not in session:
         return redirect(url_for('login'))
-        
-    # 2. Fix Pagination: Always default to page 1
+
     try:
-        page = int(request.args.get('page', 1))
-        if page < 1: page = 1 # Safety check
+        page = max(1, int(request.args.get('page', 1)))
     except ValueError:
         page = 1
-        
-    limit = 15
+
+    limit  = 15
     offset = (page - 1) * limit
-    
+
     conn = get_db()
-    cur = conn.cursor(cursor_factory=RealDictCursor)
-    # Fetch newest posts
-    cur.execute('''SELECT * FROM posts ORDER BY created_at DESC LIMIT %s OFFSET %s''', (limit, offset))
-    posts = cur.fetchall()
-    cur.close(); conn.close()
-    
-    # Reverse to show newest at bottom
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                'SELECT username, content FROM posts '   # only fetch columns you use
+                'ORDER BY created_at DESC '
+                'LIMIT %s OFFSET %s',
+                (limit, offset)
+            )
+            posts = cur.fetchall()
+    finally:
+        release_db(conn)   # always return to pool, even on error
+
     return render_template('home.html', posts=posts[::-1], page=page)
 
+# ── POST ──
 @app.route('/post', methods=['POST'])
 def add_post():
     if 'username' not in session:
         return redirect(url_for('login'))
-    
-    content = request.form.get('content')
-    if content:
-        conn = get_db()
-        cur = conn.cursor()
-        cur.execute('INSERT INTO posts (username, content) VALUES (%s, %s)', (session['username'], content))
+
+    content = request.form.get('content', '').strip()
+    if not content or len(content) > 500:          # validate length server-side too
+        return redirect(url_for('home'))
+
+    conn = get_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                'INSERT INTO posts (username, content) VALUES (%s, %s)',
+                (session['username'], content)
+            )
         conn.commit()
-        cur.close(); conn.close()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        release_db(conn)
+
     return redirect(url_for('home'))
 
+# ── LOGIN ──
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        user, pwd = request.form['username'], request.form['password']
+        user = request.form.get('username', '').strip()
+        pwd  = request.form.get('password', '')
+
         conn = get_db()
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute('SELECT * FROM users WHERE username=%s AND password=%s', (user, pwd))
-        user_data = cur.fetchone()
-        cur.close(); conn.close()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    'SELECT username FROM users WHERE username=%s AND password=%s',
+                    (user, hash_password(pwd))
+                )
+                user_data = cur.fetchone()
+        finally:
+            release_db(conn)
+
         if user_data:
             session['username'] = user
             return redirect(url_for('home'))
         return "Invalid login! <a href='/login'>Try again</a>"
+
     return render_template('login.html')
 
+# ── REGISTER ──
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        user, pwd = request.form['username'], request.form['password']
+        user = request.form.get('username', '').strip()
+        pwd  = request.form.get('password', '')
+
+        if not user or not pwd:
+            return "Username and password required. <a href='/register'>Try again</a>"
+
         conn = get_db()
-        cur = conn.cursor()
         try:
-            cur.execute('INSERT INTO users (username, password) VALUES (%s, %s)', (user, pwd))
+            with conn.cursor() as cur:
+                cur.execute(
+                    'INSERT INTO users (username, password) VALUES (%s, %s)',
+                    (user, hash_password(pwd))
+                )
             conn.commit()
             return redirect(url_for('login'))
-        except:
-            return "Username exists! <a href='/register'>Try again</a>"
+        except IntegrityError:
+            conn.rollback()
+            return "Username already exists! <a href='/register'>Try again</a>"
+        except Exception:
+            conn.rollback()
+            raise
         finally:
-            cur.close(); conn.close()
+            release_db(conn)
+
     return render_template('register.html')
 
+# ── LOGOUT ──
 @app.route('/logout')
 def logout():
     session.pop('username', None)
     return redirect(url_for('login'))
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 10000))
+    port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port)
