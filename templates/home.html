@@ -15,7 +15,7 @@
 {% for post in posts %}
     <p>
         <b>{{ post['username'] }}</b> 
-        <small>at {{ post['created_at'].strftime('%Y-%m-%d %H:%M') }}</small><br>
+        <small>Raw data: {{ post['created_at'] }}</small><br>
         {{ post['content'] }}
     </p>
 {% endfor %}
