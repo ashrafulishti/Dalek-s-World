@@ -7,21 +7,27 @@ from psycopg2 import pool, IntegrityError
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'default-secret-key-123')
 
-# ── Connection pool: reuses connections instead of creating one per request ──
-# min 2 connections kept alive, max 10 (tune to your plan's DB connection limit)
-db_pool = pool.ThreadedConnectionPool(
-    minconn=2,
-    maxconn=10,
-    dsn=os.environ.get('DATABASE_URL')
-)
+# ── Lazy connection pool: only created on first request ──
+# This lets the app start and bind its port even if the DB is slow to wake up.
+_db_pool = None
+
+def get_pool():
+    global _db_pool
+    if _db_pool is None:
+        _db_pool = pool.ThreadedConnectionPool(
+            minconn=2,
+            maxconn=10,
+            dsn=os.environ.get('DATABASE_URL')
+        )
+    return _db_pool
 
 def get_db():
     """Borrow a connection from the pool."""
-    return db_pool.getconn()
+    return get_pool().getconn()
 
 def release_db(conn):
     """Return connection to pool (does NOT close it)."""
-    db_pool.putconn(conn)
+    get_pool().putconn(conn)
 
 def hash_password(password: str) -> str:
     """Simple SHA-256 hash. Use bcrypt in production for real security."""
