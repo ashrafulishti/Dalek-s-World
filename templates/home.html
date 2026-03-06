@@ -1,32 +1,44 @@
-<h1>Dalek Social</h1>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: sans-serif; margin: 0; padding: 20px; background-color: #f4f4f9; }
+        .chat-container { max-width: 500px; margin: auto; }
+        
+        /* The Messenger Feed */
+        .feed { display: flex; flex-direction: column-reverse; gap: 10px; margin-bottom: 20px; }
+        
+        /* Message Bubbles */
+        .msg { padding: 10px 15px; border-radius: 20px; max-width: 80%; }
+        .sent { align-self: flex-end; background-color: #0084ff; color: white; }
+        .received { align-self: flex-start; background-color: #e5e5ea; color: black; }
+        
+        /* UI Elements */
+        .refresh-btn { display: block; width: 100%; padding: 10px; margin-bottom: 10px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        input { width: 100%; padding: 12px; margin-bottom: 10px; box-sizing: border-box; }
+        button[type="submit"] { width: 100%; padding: 12px; background: #0084ff; color: white; border: none; }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <a href="/"><button class="refresh-btn">🔄 Refresh Feed</button></a>
 
-{% if session.username %}
-    <p>Hello {{ session.username }}! <a href="/logout">Logout</a></p>
-    <form action="/post" method="POST">
-        <input name="content" placeholder="Write something..." required>
-        <button>Post</button>
-    </form>
-{% else %}
-    <a href="/register">Register</a> | <a href="/login">Login</a>
-{% endif %}
+        <div class="feed">
+            {% for post in posts %}
+                <div class="msg {{ 'sent' if post['username'] == session.username else 'received' }}">
+                    <b>{{ post['username'] }}</b><br>
+                    {{ post['content'] }}
+                </div>
+            {% endfor %}
+        </div>
 
-<h2>Feed:</h2>
-
-{% for post in posts %}
-    <p>
-        <b>{{ post['username'] }}</b> 
-        <small>at {{ post['created_at'].strftime('%Y-%m-%d %H:%M') }}</small><br>
-        {{ post['content'] }}
-    </p>
-{% endfor %}
-
-<hr>
-<div>
-    {% if page > 1 %}
-        <a href="/?page={{ page - 1 }}">&laquo; Previous</a>
-    {% endif %}
-
-    <span>Page {{ page }}</span>
-
-    <a href="/?page={{ page + 1 }}">Next &raquo;</a>
-</div>
+        {% if session.username %}
+            <form action="/post" method="POST">
+                <input name="content" placeholder="Type a message..." required>
+                <button type="submit">Send</button>
+            </form>
+        {% endif %}
+    </div>
+</body>
+</html>
