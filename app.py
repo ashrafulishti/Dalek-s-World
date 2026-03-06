@@ -25,7 +25,7 @@ def home():
     # Fetch 10 posts for the current page, sorted by newest first
     cur.execute('''
         SELECT * FROM posts 
-        ORDER BY created_at DESC 
+        ORDER BY created_at ASC 
         LIMIT %s OFFSET %s
     ''', (limit, offset))
     
