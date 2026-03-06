@@ -1,7 +1,27 @@
-<h1>Register</h1>
-<form method="POST">
-    Username: <input name="username"><br>
-    Password: <input name="password" type="password"><br>
-    <button>Register</button>
-</form>
-<a href="/login">Already have an account? Login here</a>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime&display=swap" rel="stylesheet">
+    <style>
+        body { background: #000; color: #0f0; font-family: 'Courier Prime', monospace; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .box { border: 1px solid #0f0; padding: 25px; width: 85%; max-width: 320px; text-align: center; }
+        h1 { font-size: 24px; margin-bottom: 5px; }
+        input { width: 100%; background: #000; color: #0f0; border: 1px solid #0f0; padding: 12px; margin: 10px 0; box-sizing: border-box; }
+        button { width: 100%; background: #0f0; color: #000; border: none; padding: 12px; font-weight: bold; cursor: pointer; }
+        a { color: #0f0; text-decoration: none; font-size: 13px; display: block; margin-top: 15px; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h1>DALEK'S WORLD</h1>
+        <small>by ashrafulishti</small>
+        <form method="POST">
+            <input name="username" placeholder="NEW_USER_ID" required>
+            <input name="password" type="password" placeholder="NEW_ACCESS_KEY" required>
+            <button type="submit">REGISTER_USER</button>
+        </form>
+        <a href="/login">[ ALREADY HAVE ACCESS? LOGIN ]</a>
+    </div>
+</body>
+</html>
