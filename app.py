@@ -7,25 +7,28 @@ app = Flask(__name__)
 app.secret_key = 'super-secret-key-123'
 
 def get_db():
-    # Connect to the Cloud Database using the environment variable
+    # Connects to your Neon Cloud Database
     conn = psycopg2.connect(os.environ.get('DATABASE_URL'))
     return conn
 
 @app.route('/')
 def home():
-    # Get current page, default to 1 if not provided
-    page = int(request.args.get('page', 1))
-    limit = 10
+    # Pagination setup: 15 messages per page
+    try:
+        page = int(request.args.get('page', 1))
+    except ValueError:
+        page = 1
+        
+    limit = 15
     offset = (page - 1) * limit
     
     conn = get_db()
-    # Use RealDictCursor to get results as dictionaries
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
-    # Fetch 10 posts for the current page, sorted by newest first
+    # Fetch 15 posts, newest first
     cur.execute('''
         SELECT * FROM posts 
-        ORDER BY created_at ASC 
+        ORDER BY created_at DESC 
         LIMIT %s OFFSET %s
     ''', (limit, offset))
     
@@ -76,7 +79,9 @@ def add_post():
         content = request.form['content']
         conn = get_db()
         cur = conn.cursor()
-        cur.execute('INSERT INTO posts (username, content) VALUES (%s, %s)', (session['username'], content))
+        # Explicitly use CURRENT_TIMESTAMP to ensure date is saved
+        cur.execute('INSERT INTO posts (username, content, created_at) VALUES (%s, %s, CURRENT_TIMESTAMP)', 
+                    (session['username'], content))
         conn.commit()
         cur.close()
         conn.close()
@@ -88,6 +93,7 @@ def logout():
     return redirect(url_for('home'))
 
 if __name__ == '__main__':
+    # Initial table setup
     conn = get_db()
     cur = conn.cursor()
     cur.execute('CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, username TEXT UNIQUE, password TEXT)')
