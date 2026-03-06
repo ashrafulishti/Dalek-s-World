@@ -3,27 +3,18 @@
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: sans-serif; margin: 0; padding: 20px; background-color: #f4f4f9; }
+        body { font-family: sans-serif; background: #f4f4f9; padding: 10px; }
         .chat-container { max-width: 500px; margin: auto; }
-        
-        /* The Messenger Feed */
-        .feed { display: flex; flex-direction: column-reverse; gap: 10px; margin-bottom: 20px; }
-        
-        /* Message Bubbles */
-        .msg { padding: 10px 15px; border-radius: 20px; max-width: 80%; }
-        .sent { align-self: flex-end; background-color: #0084ff; color: white; }
-        .received { align-self: flex-start; background-color: #e5e5ea; color: black; }
-        
-        /* UI Elements */
-        .refresh-btn { display: block; width: 100%; padding: 10px; margin-bottom: 10px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; }
-        input { width: 100%; padding: 12px; margin-bottom: 10px; box-sizing: border-box; }
-        button[type="submit"] { width: 100%; padding: 12px; background: #0084ff; color: white; border: none; }
+        .feed { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+        .msg { padding: 10px 15px; border-radius: 15px; max-width: 80%; }
+        .sent { align-self: flex-end; background: #0084ff; color: white; }
+        .received { align-self: flex-start; background: #e5e5ea; }
+        input { width: 100%; padding: 12px; margin-bottom: 5px; }
     </style>
 </head>
 <body>
     <div class="chat-container">
-        <a href="/"><button class="refresh-btn">🔄 Refresh Feed</button></a>
-
+        <a href="/"><button>🔄 Refresh Feed</button></a>
         <div class="feed">
             {% for post in posts %}
                 <div class="msg {{ 'sent' if post['username'] == session.username else 'received' }}">
@@ -32,13 +23,11 @@
                 </div>
             {% endfor %}
         </div>
-
-        {% if session.username %}
-            <form action="/post" method="POST">
-                <input name="content" placeholder="Type a message..." required>
-                <button type="submit">Send</button>
-            </form>
-        {% endif %}
+        <form action="/post" method="POST">
+            <input name="content" placeholder="Type..." required>
+            <button>Send</button>
+        </form>
+        <a href="/?page={{ page + 1 }}">Older Messages</a>
     </div>
 </body>
 </html>
