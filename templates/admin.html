@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DALEKS · ADMIN</title>
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: #000;
+            color: #0f0;
+            font-family: 'Courier Prime', monospace;
+            min-height: 100dvh;
+            padding: 20px 16px 40px;
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #0a0;
+            padding-bottom: 14px;
+            margin-bottom: 24px;
+        }
+
+        .topbar-title {
+            font-size: 18px;
+            letter-spacing: 0.2em;
+        }
+
+        .topbar-sub { font-size: 11px; color: #0a0; margin-top: 2px; letter-spacing: 0.1em; }
+
+        .topbar-links { display: flex; gap: 10px; }
+
+        .top-link {
+            font-size: 11px;
+            color: #0a0;
+            text-decoration: none;
+            border: 1px solid #0a0;
+            padding: 4px 10px;
+            letter-spacing: 0.08em;
+            transition: all 0.15s;
+        }
+        .top-link:hover { color: #0f0; border-color: #0f0; }
+
+        .msg-box {
+            background: rgba(0,255,0,0.07);
+            border: 1px solid #0f0;
+            padding: 10px 14px;
+            font-size: 13px;
+            letter-spacing: 0.06em;
+            margin-bottom: 20px;
+        }
+
+        .section {
+            border: 1px solid #0a0;
+            margin-bottom: 20px;
+            border-radius: 2px;
+        }
+
+        .section-header {
+            background: rgba(0,255,0,0.06);
+            border-bottom: 1px solid #0a0;
+            padding: 10px 16px;
+            font-size: 13px;
+            letter-spacing: 0.12em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-header .badge {
+            font-size: 10px;
+            background: #0f0;
+            color: #000;
+            padding: 1px 6px;
+            border-radius: 2px;
+            font-weight: bold;
+        }
+
+        .section-header .badge.locked { background: #f44; color: #fff; }
+
+        .section-body { padding: 14px 16px; }
+
+        /* Admin list */
+        .admin-list {
+            list-style: none;
+            margin-bottom: 14px;
+        }
+        .admin-list li {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 7px 0;
+            border-bottom: 1px solid rgba(0,255,0,0.08);
+            font-size: 13px;
+        }
+        .admin-list li:last-child { border-bottom: none; }
+
+        .admin-name { color: #0f0; letter-spacing: 0.06em; }
+
+        .remove-btn {
+            background: transparent;
+            color: #f44;
+            border: 1px solid #f44;
+            padding: 3px 10px;
+            font-family: 'Courier Prime', monospace;
+            font-size: 11px;
+            cursor: pointer;
+            letter-spacing: 0.08em;
+            transition: all 0.15s;
+        }
+        .remove-btn:hover { background: rgba(255,68,68,0.1); }
+
+        /* Forms */
+        .inline-form {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .inline-form input {
+            flex: 1;
+            background: rgba(0,255,0,0.04);
+            color: #0f0;
+            border: 1px solid #0a0;
+            padding: 8px 10px;
+            font-family: 'Courier Prime', monospace;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.15s;
+            min-width: 0;
+        }
+        .inline-form input:focus { border-color: #0f0; }
+        .inline-form input::placeholder { color: #0a0; }
+
+        .btn-green {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 8px 14px;
+            font-family: 'Courier Prime', monospace;
+            font-size: 12px;
+            font-weight: bold;
+            letter-spacing: 0.08em;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.15s;
+            flex-shrink: 0;
+        }
+        .btn-green:hover { background: #fff; }
+
+        .btn-red {
+            background: transparent;
+            color: #f44;
+            border: 1px solid #f44;
+            padding: 8px 14px;
+            font-family: 'Courier Prime', monospace;
+            font-size: 12px;
+            letter-spacing: 0.08em;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.15s;
+            flex-shrink: 0;
+        }
+        .btn-red:hover { background: rgba(255,68,68,0.1); }
+
+        .label {
+            font-size: 11px;
+            color: #0a0;
+            letter-spacing: 0.1em;
+            margin-bottom: 6px;
+            margin-top: 12px;
+        }
+        .label:first-child { margin-top: 0; }
+
+        /* Channel overview table */
+        .ch-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .ch-table td { padding: 7px 10px; border-bottom: 1px solid rgba(0,255,0,0.08); }
+        .ch-table td:first-child { color: #0f0; letter-spacing: 0.08em; }
+        .ch-table td:last-child { text-align: right; }
+        .ch-table tr:last-child td { border-bottom: none; }
+
+        .tag {
+            font-size: 10px;
+            padding: 2px 7px;
+            border-radius: 2px;
+            letter-spacing: 0.06em;
+        }
+        .tag.open { border: 1px solid #0a0; color: #0a0; }
+        .tag.locked { border: 1px solid #f44; color: #f44; }
+
+        .empty-note { font-size: 12px; color: #0a0; font-style: italic; padding: 4px 0; }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <div>
+        <div class="topbar-title">⚙ ADMIN PANEL</div>
+        <div class="topbar-sub">OPERATOR: ashrafulishti</div>
+    </div>
+    <div class="topbar-links">
+        <a href="{{ url_for('home') }}" class="top-link">← BACK</a>
+        <a href="{{ url_for('logout') }}" class="top-link">LOGOUT</a>
+    </div>
+</div>
+
+{% if msg %}
+<div class="msg-box">✔ {{ msg }}</div>
+{% endif %}
+
+<!-- Channel overview -->
+<div class="section">
+    <div class="section-header">ALL CHANNELS</div>
+    <div class="section-body">
+        <table class="ch-table">
+            {% for ch in all_channels %}
+            <tr>
+                <td>#{{ ch.name }}</td>
+                <td><span class="tag {{ 'locked' if ch.locked else 'open' }}">{{ 'LOCKED' if ch.locked else 'OPEN' }}</span></td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</div>
+
+<!-- Per locked channel management -->
+{% for ch in locked %}
+<div class="section">
+    <div class="section-header">
+        #{{ ch.name }}
+        <span class="badge locked">LOCKED</span>
+    </div>
+    <div class="section-body">
+
+        <!-- Admin list -->
+        <div class="label">ADMINS WITH ACCESS</div>
+        {% set admins = admins_by_channel[ch.name] %}
+        {% if admins %}
+        <ul class="admin-list">
+            {% for username in admins %}
+            <li>
+                <span class="admin-name">{{ username }}</span>
+                <form method="POST" style="display:inline;">
+                    <input type="hidden" name="action" value="remove_admin">
+                    <input type="hidden" name="channel" value="{{ ch.name }}">
+                    <input type="hidden" name="username" value="{{ username }}">
+                    <button type="submit" class="remove-btn">REMOVE</button>
+                </form>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="empty-note">No admins added yet.</div>
+        {% endif %}
+
+        <!-- Add admin -->
+        <div class="label">ADD ADMIN</div>
+        <form method="POST" class="inline-form">
+            <input type="hidden" name="action" value="add_admin">
+            <input type="hidden" name="channel" value="{{ ch.name }}">
+            <input type="text" name="username" placeholder="USERNAME" required>
+            <button type="submit" class="btn-green">ADD</button>
+        </form>
+
+        <!-- Change password -->
+        <div class="label">CHANGE PASSWORD</div>
+        <form method="POST" class="inline-form">
+            <input type="hidden" name="action" value="change_password">
+            <input type="hidden" name="channel" value="{{ ch.name }}">
+            <input type="password" name="new_password" placeholder="NEW PASSWORD" required>
+            <button type="submit" class="btn-green">UPDATE</button>
+        </form>
+
+        <!-- Remove lock -->
+        <div class="label">MAKE PUBLIC</div>
+        <form method="POST" class="inline-form">
+            <input type="hidden" name="action" value="remove_password">
+            <input type="hidden" name="channel" value="{{ ch.name }}">
+            <button type="submit" class="btn-red">REMOVE LOCK FROM #{{ ch.name }}</button>
+        </form>
+
+    </div>
+</div>
+{% endfor %}
+
+</body>
+</html>
