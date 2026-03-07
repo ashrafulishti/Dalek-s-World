@@ -541,7 +541,7 @@
         .empty-state-sub { font-size: 14px; text-align: center; }
     </style>
 </head>
-<body data-me="{{ session.username }}">
+<body data-me="{{ session.username }}" data-channel="{{ channel }}">
 <div class="app">
 
     <!-- SERVER RAIL -->
@@ -563,31 +563,27 @@
 
         <div class="channel-section">
             <div class="channel-section-label">Text Channels</div>
-            <div class="channel-item active">
-                <span class="ch-hash">#</span>
-                <span>general</span>
-            </div>
-            <div class="channel-item">
-                <span class="ch-hash">#</span>
-                <span>transmissions</span>
-            </div>
-            <div class="channel-item">
-                <span class="ch-hash">#</span>
-                <span>off-topic</span>
-            </div>
+            {% for ch in channels %}
+            <a href="{{ url_for('channel', channel_name=ch) }}" style="text-decoration:none;">
+                <div class="channel-item {{ 'active' if ch == channel else '' }}">
+                    <span class="ch-hash">#</span>
+                    <span>{{ ch }}</span>
+                </div>
+            </a>
+            {% endfor %}
         </div>
 
         <div class="channel-section">
             <div class="channel-section-label">Pages</div>
             {% if page > 1 %}
-            <a href="{{ url_for('home', page=page - 1) }}" style="text-decoration:none;">
+            <a href="{{ url_for('channel', channel_name=channel, page=page - 1) }}" style="text-decoration:none;">
                 <div class="channel-item">
                     <span class="ch-hash">‹</span>
                     <span>newer</span>
                 </div>
             </a>
             {% endif %}
-            <a href="{{ url_for('home', page=page + 1) }}" style="text-decoration:none;">
+            <a href="{{ url_for('channel', channel_name=channel, page=page + 1) }}" style="text-decoration:none;">
                 <div class="channel-item">
                     <span class="ch-hash">›</span>
                     <span>older</span>
@@ -615,9 +611,9 @@
         <!-- Channel Header -->
         <div class="channel-topbar">
             <span class="topbar-hash">#</span>
-            <span class="topbar-channel-name">general</span>
+            <span class="topbar-channel-name">{{ channel }}</span>
             <div class="topbar-sep"></div>
-            <span class="topbar-topic">DALEKS global channel · page {{ page }}</span>
+            <span class="topbar-topic">DALEKS · #{{ channel }} · page {{ page }}</span>
             <div class="topbar-actions">
                 <a href="/" class="topbar-btn" title="Refresh">↻</a>
             </div>
@@ -626,7 +622,7 @@
         <!-- Messages -->
         <div class="feed" id="chatBox">
             {% if posts %}
-                <div class="system-msg">Welcome to #general · Page {{ page }}</div>
+                <div class="system-msg">Welcome to #{{ channel }} · Page {{ page }}</div>
 
                 {% for post in posts %}
                 <div class="msg-group first-in-group"
@@ -659,7 +655,8 @@
             <div class="composer">
                 <div class="composer-plus">+</div>
                 <form action="/post" method="POST" style="flex:1;display:flex;align-items:center;gap:12px;">
-                    <input name="content" placeholder="Message #general" required autocomplete="off" maxlength="500">
+                    <input type="hidden" name="channel" value="{{ channel }}">
+                    <input name="content" placeholder="Message #{{ channel }}" required autocomplete="off" maxlength="500">
                     <span class="composer-emoji">😊</span>
                     <button type="submit" class="send-btn">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
@@ -793,9 +790,12 @@
         return div;
     }
 
-    // ── Poll /poll?since=N every 2s ──
+    // Current channel (injected from Flask)
+    const CHANNEL = document.body.dataset.channel || 'general';
+
+    // Poll /poll?since=N&channel=X every 2s
     setInterval(() => {
-        fetch('/poll?since=' + lastId)
+        fetch('/poll?since=' + lastId + '&channel=' + CHANNEL)
             .then(r => r.json())
             .then(data => {
                 if (!data.messages || data.messages.length === 0) return;
@@ -803,7 +803,7 @@
                 // Remove empty state if present
                 const empty = chatBox.querySelector('.empty-state');
                 if (empty) {
-                    chatBox.innerHTML = '<div class="system-msg">Welcome to #general</div>';
+                    chatBox.innerHTML = '<div class="system-msg">Welcome to #' + CHANNEL + '</div>';
                 }
 
                 data.messages.forEach(msg => {
