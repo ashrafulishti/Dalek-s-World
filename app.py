@@ -7,8 +7,6 @@ from psycopg2 import pool, IntegrityError
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'default-secret-key-123')
 
-# ── Channels — add or rename freely ──
-CHANNELS = ['general', 'transmissions', 'off-topic']
 DEFAULT_CHANNEL = 'general'
 
 # ── Lazy connection pool ──
@@ -18,8 +16,7 @@ def get_pool():
     global _db_pool
     if _db_pool is None:
         _db_pool = pool.ThreadedConnectionPool(
-            minconn=2,
-            maxconn=10,
+            minconn=2, maxconn=10,
             dsn=os.environ.get('DATABASE_URL')
         )
     return _db_pool
@@ -33,18 +30,34 @@ def release_db(conn):
 def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
-def valid_channel(ch):
-    return ch if ch in CHANNELS else DEFAULT_CHANNEL
 
+# ── MIGRATION: runs once on boot, safe to re-run ──
 def migrate_db():
-    """Adds channel column to posts if it does not exist. Safe to run every boot."""
     conn = get_db()
     try:
         with conn.cursor() as cur:
+            # Add channel column to posts if missing
             cur.execute("""
                 ALTER TABLE posts
                 ADD COLUMN IF NOT EXISTS channel VARCHAR(50) DEFAULT 'general'
             """)
+            # Create channels table
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS channels (
+                    id         SERIAL PRIMARY KEY,
+                    name       VARCHAR(50) UNIQUE NOT NULL,
+                    password   VARCHAR(64),          -- NULL means no password
+                    created_by VARCHAR(100),
+                    created_at TIMESTAMP DEFAULT NOW()
+                )
+            """)
+            # Seed default channels (no password)
+            for ch in ['general', 'transmissions', 'off-topic']:
+                cur.execute("""
+                    INSERT INTO channels (name, password, created_by)
+                    VALUES (%s, NULL, 'system')
+                    ON CONFLICT (name) DO NOTHING
+                """, (ch,))
         conn.commit()
     except Exception as e:
         conn.rollback()
@@ -52,10 +65,32 @@ def migrate_db():
     finally:
         release_db(conn)
 
-# ── HOME: redirect to default channel ──
+
+def get_all_channels():
+    conn = get_db()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute('SELECT name, password IS NOT NULL as locked FROM channels ORDER BY id')
+            return cur.fetchall()
+    finally:
+        release_db(conn)
+
+
+def channel_exists(name):
+    conn = get_db()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute('SELECT name, password FROM channels WHERE name = %s', (name,))
+            return cur.fetchone()
+    finally:
+        release_db(conn)
+
+
+# ── HOME ──
 @app.route('/')
 def home():
     return redirect(url_for('channel', channel_name=DEFAULT_CHANNEL))
+
 
 # ── CHANNEL PAGE ──
 @app.route('/c/<channel_name>')
@@ -63,7 +98,16 @@ def channel(channel_name):
     if 'username' not in session:
         return redirect(url_for('login'))
 
-    channel_name = valid_channel(channel_name)
+    ch = channel_exists(channel_name)
+    if not ch:
+        return redirect(url_for('home'))
+
+    # If channel is locked, check session for access
+    if ch['password']:
+        granted = session.get('channel_access', {})
+        if channel_name not in granted:
+            # Redirect to password prompt
+            return redirect(url_for('channel_auth', channel_name=channel_name))
 
     try:
         page = max(1, int(request.args.get('page', 1)))
@@ -78,22 +122,94 @@ def channel(channel_name):
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 'SELECT id, username, content FROM posts '
-                'WHERE channel = %s '
-                'ORDER BY created_at DESC '
-                'LIMIT %s OFFSET %s',
+                'WHERE channel = %s ORDER BY created_at DESC LIMIT %s OFFSET %s',
                 (channel_name, limit, offset)
             )
             posts = cur.fetchall()
     finally:
         release_db(conn)
 
+    channels = get_all_channels()
+
     return render_template(
         'home.html',
         posts=posts[::-1],
         page=page,
         channel=channel_name,
-        channels=CHANNELS
+        channels=channels
     )
+
+
+# ── CHANNEL PASSWORD AUTH ──
+@app.route('/c/<channel_name>/auth', methods=['GET', 'POST'])
+def channel_auth(channel_name):
+    if 'username' not in session:
+        return redirect(url_for('login'))
+
+    ch = channel_exists(channel_name)
+    if not ch or not ch['password']:
+        return redirect(url_for('channel', channel_name=channel_name))
+
+    error = None
+    if request.method == 'POST':
+        entered = request.form.get('password', '')
+        if hash_password(entered) == ch['password']:
+            # Store access in session
+            access = session.get('channel_access', {})
+            access[channel_name] = True
+            session['channel_access'] = access
+            return redirect(url_for('channel', channel_name=channel_name))
+        else:
+            error = 'Wrong password. Try again.'
+
+    channels = get_all_channels()
+    return render_template(
+        'channel_auth.html',
+        channel_name=channel_name,
+        error=error,
+        channels=channels
+    )
+
+
+# ── CREATE CHANNEL ──
+@app.route('/create-channel', methods=['POST'])
+def create_channel():
+    if 'username' not in session:
+        return jsonify({'error': 'unauthorized'}), 401
+
+    name     = request.form.get('name', '').strip().lower()
+    password = request.form.get('password', '').strip()
+
+    # Validate name: letters, numbers, hyphens only, max 30 chars
+    import re
+    if not name or not re.match(r'^[a-z0-9\-]{1,30}$', name):
+        return jsonify({'error': 'Invalid channel name. Use lowercase letters, numbers, hyphens only.'}), 400
+
+    hashed_pw = hash_password(password) if password else None
+
+    conn = get_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                'INSERT INTO channels (name, password, created_by) VALUES (%s, %s, %s)',
+                (name, hashed_pw, session['username'])
+            )
+        conn.commit()
+        # Grant creator instant access
+        if hashed_pw:
+            access = session.get('channel_access', {})
+            access[name] = True
+            session['channel_access'] = access
+        return jsonify({'ok': True, 'name': name})
+    except IntegrityError:
+        conn.rollback()
+        return jsonify({'error': 'Channel already exists.'}), 409
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        release_db(conn)
+
 
 # ── POLL ──
 @app.route('/poll')
@@ -101,16 +217,25 @@ def poll():
     if 'username' not in session:
         return jsonify({'error': 'unauthorized'}), 401
 
-    since_id     = request.args.get('since', 0, type=int)
-    channel_name = valid_channel(request.args.get('channel', DEFAULT_CHANNEL))
+    channel_name = request.args.get('channel', DEFAULT_CHANNEL)
+    ch = channel_exists(channel_name)
+    if not ch:
+        return jsonify({'messages': []})
+
+    # Enforce access for locked channels
+    if ch['password']:
+        granted = session.get('channel_access', {})
+        if channel_name not in granted:
+            return jsonify({'error': 'forbidden'}), 403
+
+    since_id = request.args.get('since', 0, type=int)
 
     conn = get_db()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 'SELECT id, username, content FROM posts '
-                'WHERE id > %s AND channel = %s '
-                'ORDER BY id ASC LIMIT 30',
+                'WHERE id > %s AND channel = %s ORDER BY id ASC LIMIT 30',
                 (since_id, channel_name)
             )
             rows = cur.fetchall()
@@ -119,6 +244,7 @@ def poll():
 
     return jsonify({'messages': [dict(r) for r in rows]})
 
+
 # ── POST ──
 @app.route('/post', methods=['POST'])
 def add_post():
@@ -126,7 +252,17 @@ def add_post():
         return redirect(url_for('login'))
 
     content      = request.form.get('content', '').strip()
-    channel_name = valid_channel(request.form.get('channel', DEFAULT_CHANNEL))
+    channel_name = request.form.get('channel', DEFAULT_CHANNEL)
+
+    ch = channel_exists(channel_name)
+    if not ch:
+        return redirect(url_for('home'))
+
+    # Enforce access
+    if ch['password']:
+        granted = session.get('channel_access', {})
+        if channel_name not in granted:
+            return redirect(url_for('channel_auth', channel_name=channel_name))
 
     if not content or len(content) > 500:
         return redirect(url_for('channel', channel_name=channel_name))
@@ -146,6 +282,7 @@ def add_post():
         release_db(conn)
 
     return redirect(url_for('channel', channel_name=channel_name))
+
 
 # ── LOGIN ──
 @app.route('/login', methods=['GET', 'POST'])
@@ -171,6 +308,7 @@ def login():
         return "Invalid login! <a href='/login'>Try again</a>"
 
     return render_template('login.html')
+
 
 # ── REGISTER ──
 @app.route('/register', methods=['GET', 'POST'])
@@ -202,11 +340,14 @@ def register():
 
     return render_template('register.html')
 
+
 # ── LOGOUT ──
 @app.route('/logout')
 def logout():
     session.pop('username', None)
+    session.pop('channel_access', None)
     return redirect(url_for('login'))
+
 
 if __name__ == '__main__':
     migrate_db()
