@@ -1,821 +1,355 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DALEKS</title>
-    <link href="https://fonts.googleapis.com/css2?family=gg+sans:wght@400;500;600;700&family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- fallback: use a clean system stack that matches Discord's feel -->
-    <style>
-        :root {
-            /* Discord structure, green palette */
-            --bg-tertiary:   #0d1a0d;   /* darkest — sidebar bg */
-            --bg-secondary:  #111f11;   /* channel list */
-            --bg-primary:    #162016;   /* main chat area */
-            --bg-float:      #1a2a1a;   /* modals, popovers */
-            --bg-message-hover: rgba(0,0,0,0.08);
-
-            --channelbar:    #0f1a0f;
-
-            --green-1:       #3ba55c;   /* Discord green accent */
-            --green-2:       #2d7d46;
-            --green-bright:  #57f287;   /* online dot, highlights */
-            --green-muted:   #1e4d2b;
-            --green-text:    #a8d8a8;   /* body text tint */
-
-            --text-normal:   #dcf0dc;
-            --text-muted:    #5e8a5e;
-            --text-link:     #57f287;
-            --text-danger:   #ed4245;
-
-            --interactive-normal: #8fbf8f;
-            --interactive-hover:  #dcf0dc;
-            --interactive-active: #fff;
-
-            --border: rgba(255,255,255,0.04);
-
-            /* Avatar palette */
-            --a0:#57f287; --a1:#3ba55c; --a2:#43b581;
-            --a3:#f0a;    --a4:#fa0;    --a5:#0af;
-            --a6:#f44;    --a7:#a78bfa;
-        }
-
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-        html, body {
-            height: 100%; height: 100dvh;
-            overflow: hidden;
-            background: var(--bg-tertiary);
-            color: var(--text-normal);
-            font-family: 'Noto Sans', 'Segoe UI', sans-serif;
-            font-size: 15px;
-            -webkit-font-smoothing: antialiased;
-        }
-
-        /* ══════════════════════════════════════
-           APP SHELL  —  3-column Discord layout
-        ══════════════════════════════════════ */
-        .app {
-            display: flex;
-            height: 100dvh;
-            overflow: hidden;
-        }
-
-        /* ── Server Rail (left icon strip) ── */
-        .server-rail {
-            width: 72px;
-            flex-shrink: 0;
-            background: var(--bg-tertiary);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 12px 0;
-            gap: 8px;
-            overflow-y: auto;
-            overflow-x: hidden;
-        }
-        .server-rail::-webkit-scrollbar { display: none; }
-
-        .server-icon {
-            width: 48px; height: 48px;
-            border-radius: 50%;
-            background: var(--bg-secondary);
-            display: flex; align-items: center; justify-content: center;
-            font-size: 20px;
-            cursor: pointer;
-            transition: border-radius 0.15s, background 0.15s;
-            position: relative;
-            flex-shrink: 0;
-            color: var(--interactive-normal);
-        }
-        .server-icon:hover,
-        .server-icon.active {
-            border-radius: 30%;
-            background: var(--green-1);
-            color: #fff;
-        }
-        .server-icon.active::before {
-            content: '';
-            position: absolute;
-            left: -16px; top: 50%;
-            transform: translateY(-50%);
-            width: 4px;
-            height: 40px;
-            border-radius: 0 4px 4px 0;
-            background: var(--green-bright);
-        }
-        .server-rail-sep {
-            width: 32px; height: 2px;
-            background: var(--bg-secondary);
-            border-radius: 1px;
-            flex-shrink: 0;
-        }
-
-        /* ── Channel Sidebar ── */
-        .sidebar {
-            width: 240px;
-            flex-shrink: 0;
-            background: var(--bg-secondary);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        .server-header {
-            height: 48px;
-            padding: 0 16px;
-            display: flex; align-items: center; justify-content: space-between;
-            border-bottom: 1px solid var(--border);
-            cursor: pointer;
-            flex-shrink: 0;
-            transition: background 0.1s;
-        }
-        .server-header:hover { background: var(--bg-float); }
-        .server-header-name {
-            font-weight: 600;
-            font-size: 15px;
-            color: var(--text-normal);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .server-header svg { color: var(--text-muted); flex-shrink: 0; }
-
-        .channel-section {
-            padding: 16px 8px 4px;
-            flex-shrink: 0;
-        }
-        .channel-section-label {
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.02em;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            padding: 0 8px;
-            margin-bottom: 2px;
-            display: flex; align-items: center; justify-content: space-between;
-        }
-
-        .channel-item {
-            display: flex; align-items: center; gap: 6px;
-            padding: 6px 8px;
-            border-radius: 4px;
-            cursor: pointer;
-            color: var(--text-muted);
-            font-size: 15px;
-            font-weight: 500;
-            transition: background 0.1s, color 0.1s;
-            user-select: none;
-        }
-        .channel-item:hover { background: var(--bg-float); color: var(--interactive-hover); }
-        .channel-item.active {
-            background: var(--green-muted);
-            color: var(--interactive-active);
-        }
-        .channel-item .ch-hash {
-            font-size: 20px;
-            color: inherit;
-            opacity: 0.6;
-            line-height: 1;
-            flex-shrink: 0;
-        }
-        .channel-item.active .ch-hash { opacity: 1; }
-
-        /* User panel at bottom of sidebar */
-        .user-panel {
-            margin-top: auto;
-            padding: 8px;
-            background: var(--channelbar);
-            display: flex; align-items: center; gap: 8px;
-            flex-shrink: 0;
-        }
-        .user-panel-avatar {
-            width: 32px; height: 32px;
-            border-radius: 50%;
-            background: var(--green-1);
-            display: flex; align-items: center; justify-content: center;
-            font-size: 12px; font-weight: 700;
-            color: #fff;
-            flex-shrink: 0;
-            position: relative;
-        }
-        .user-panel-avatar::after {
-            content: '';
-            position: absolute;
-            bottom: -1px; right: -1px;
-            width: 10px; height: 10px;
-            border-radius: 50%;
-            background: var(--green-bright);
-            border: 2px solid var(--channelbar);
-        }
-        .user-panel-info { flex: 1; min-width: 0; }
-        .user-panel-name {
-            font-size: 13px; font-weight: 600;
-            color: var(--text-normal);
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-        .user-panel-tag {
-            font-size: 11px; color: var(--text-muted);
-        }
-        .user-panel-actions { display: flex; gap: 2px; }
-        .panel-btn {
-            width: 32px; height: 32px;
-            border-radius: 4px;
-            background: transparent; border: none;
-            color: var(--interactive-normal);
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; transition: background 0.1s, color 0.1s;
-            text-decoration: none;
-            font-size: 16px;
-        }
-        .panel-btn:hover { background: var(--bg-float); color: var(--interactive-hover); }
-
-        /* ── Main Chat Area ── */
-        .main {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            background: var(--bg-primary);
-            overflow: hidden;
-        }
-
-        /* Channel topbar */
-        .channel-topbar {
-            height: 48px;
-            flex-shrink: 0;
-            display: flex; align-items: center;
-            padding: 0 16px;
-            gap: 12px;
-            border-bottom: 1px solid var(--border);
-            box-shadow: 0 1px 0 rgba(0,0,0,0.2);
-        }
-        .topbar-hash {
-            font-size: 24px; color: var(--text-muted); line-height: 1;
-        }
-        .topbar-channel-name {
-            font-size: 15px; font-weight: 600;
-            color: var(--text-normal);
-        }
-        .topbar-sep {
-            width: 1px; height: 24px;
-            background: var(--border);
-            flex-shrink: 0;
-        }
-        .topbar-topic {
-            font-size: 13px; color: var(--text-muted);
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-            flex: 1;
-        }
-        .topbar-actions { display: flex; gap: 4px; margin-left: auto; }
-        .topbar-btn {
-            width: 32px; height: 32px;
-            border-radius: 4px; border: none;
-            background: transparent;
-            color: var(--interactive-normal);
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; font-size: 18px;
-            transition: background 0.1s, color 0.1s;
-            text-decoration: none;
-        }
-        .topbar-btn:hover { background: var(--bg-float); color: var(--interactive-hover); }
-
-        /* ── Message Feed ── */
-        .feed {
-            flex: 1;
-            overflow-y: auto;
-            overflow-x: hidden;
-            padding: 16px 0 8px;
-            display: flex;
-            flex-direction: column;
-        }
-        .feed::-webkit-scrollbar { width: 6px; }
-        .feed::-webkit-scrollbar-track { background: transparent; }
-        .feed::-webkit-scrollbar-thumb {
-            background: rgba(0,0,0,0.3);
-            border-radius: 3px;
-        }
-        .feed::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.5); }
-
-        /* System message / divider */
-        .system-msg {
-            display: flex; align-items: center; gap: 12px;
-            padding: 8px 16px;
-            color: var(--text-muted);
-            font-size: 12px;
-        }
-        .system-msg::before, .system-msg::after {
-            content: ''; flex: 1; height: 1px; background: var(--border);
-        }
-
-        /* Message group */
-        .msg-group {
-            padding: 2px 16px;
-            display: flex;
-            gap: 16px;
-            position: relative;
-            animation: msgIn 0.15s ease-out;
-        }
-        @keyframes msgIn {
-            from { opacity: 0; transform: translateY(4px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-        .msg-group:hover { background: var(--bg-message-hover); }
-
-        /* Compact continuation (no avatar/name) */
-        .msg-group.compact {
-            padding-top: 1px;
-            padding-bottom: 1px;
-        }
-        .msg-group.compact:hover .compact-time {
-            opacity: 1;
-        }
-
-        /* Avatar column */
-        .msg-avatar-col {
-            width: 40px;
-            flex-shrink: 0;
-            padding-top: 2px;
-            display: flex;
-            justify-content: center;
-        }
-
-        .msg-avatar {
-            width: 40px; height: 40px;
-            border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-weight: 700; font-size: 15px;
-            color: #fff;
-            flex-shrink: 0;
-            cursor: pointer;
-            transition: opacity 0.1s;
-        }
-        .msg-avatar:hover { opacity: 0.85; }
-
-        .compact-time {
-            font-size: 10px;
-            color: var(--text-muted);
-            opacity: 0;
-            line-height: 22px;
-            white-space: nowrap;
-            width: 40px;
-            text-align: right;
-            transition: opacity 0.1s;
-            padding-top: 3px;
-        }
-
-        /* Message content */
-        .msg-content-col { flex: 1; min-width: 0; }
-
-        .msg-header {
-            display: flex; align-items: baseline; gap: 8px;
-            margin-bottom: 2px;
-        }
-        .msg-username {
-            font-size: 15px; font-weight: 600;
-            cursor: pointer;
-            transition: text-decoration 0.1s;
-        }
-        .msg-username:hover { text-decoration: underline; }
-
-        .msg-timestamp {
-            font-size: 11px; color: var(--text-muted);
-            font-weight: 400;
-        }
-
-        .msg-text {
-            font-size: 15px;
-            color: var(--text-normal);
-            line-height: 1.375;
-            word-break: break-word;
-            white-space: pre-wrap;
-        }
-
-        /* Avatar color classes */
-        .av-0 { background: #1e6e3e; }
-        .av-1 { background: #1a5c34; }
-        .av-2 { background: #1d6b3b; }
-        .av-3 { background: #7b2fab; }
-        .av-4 { background: #c87941; }
-        .av-5 { background: #1a6ea6; }
-        .av-6 { background: #a32b2b; }
-        .av-7 { background: #5b3fa6; }
-
-        /* Username color classes */
-        .un-0 { color: var(--a0); }
-        .un-1 { color: var(--a1); }
-        .un-2 { color: var(--a2); }
-        .un-3 { color: var(--a3); }
-        .un-4 { color: var(--a4); }
-        .un-5 { color: var(--a5); }
-        .un-6 { color: var(--a6); }
-        .un-7 { color: var(--a7); }
-
-        /* ── Message Input ── */
-        .composer-wrap {
-            flex-shrink: 0;
-            padding: 0 16px 24px;
-        }
-
-        .composer {
-            background: var(--bg-float);
-            border-radius: 8px;
-            display: flex; align-items: center;
-            padding: 0 16px;
-            gap: 12px;
-            min-height: 44px;
-            border: 1px solid transparent;
-            transition: border-color 0.15s;
-        }
-        .composer:focus-within {
-            border-color: rgba(87, 242, 135, 0.15);
-        }
-
-        .composer-plus {
-            width: 24px; height: 24px;
-            border-radius: 50%;
-            background: var(--text-muted);
-            display: flex; align-items: center; justify-content: center;
-            font-size: 18px; font-weight: 300;
-            color: var(--bg-primary);
-            cursor: pointer;
-            flex-shrink: 0;
-            line-height: 1;
-            transition: background 0.15s;
-            user-select: none;
-        }
-        .composer-plus:hover { background: var(--interactive-hover); }
-
-        .composer input {
-            flex: 1;
-            background: transparent; border: none; outline: none;
-            color: var(--text-normal);
-            font-family: inherit; font-size: 15px;
-            caret-color: var(--green-bright);
-            padding: 11px 0;
-        }
-        .composer input::placeholder { color: var(--text-muted); }
-
-        .composer-emoji {
-            font-size: 20px; cursor: pointer;
-            color: var(--text-muted);
-            transition: color 0.1s;
-            flex-shrink: 0;
-            user-select: none;
-        }
-        .composer-emoji:hover { color: var(--interactive-hover); }
-
-        .send-btn {
-            width: 32px; height: 32px;
-            border-radius: 6px;
-            background: var(--green-1);
-            border: none; color: #fff;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; flex-shrink: 0;
-            transition: background 0.15s, transform 0.1s;
-        }
-        .send-btn:hover { background: var(--green-bright); color: #000; }
-        .send-btn:active { transform: scale(0.92); }
-
-        /* ── Member List (right panel) ── */
-        .member-list {
-            width: 240px;
-            flex-shrink: 0;
-            background: var(--bg-secondary);
-            padding: 16px 8px;
-            overflow-y: auto;
-            display: none; /* hidden on mobile */
-        }
-        @media (min-width: 900px) {
-            .member-list { display: block; }
-        }
-        .member-list::-webkit-scrollbar { width: 4px; }
-        .member-list::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.3); border-radius:2px; }
-
-        .member-section-label {
-            font-size: 11px; font-weight: 700;
-            letter-spacing: 0.02em;
-            color: var(--text-muted); text-transform: uppercase;
-            padding: 16px 8px 4px;
-        }
-        .member-item {
-            display: flex; align-items: center; gap: 10px;
-            padding: 6px 8px; border-radius: 4px;
-            cursor: pointer;
-            transition: background 0.1s;
-        }
-        .member-item:hover { background: var(--bg-float); }
-        .member-avatar {
-            width: 32px; height: 32px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 12px; font-weight: 700; color: #fff;
-            flex-shrink: 0; position: relative;
-        }
-        .member-avatar::after {
-            content: '';
-            position: absolute; bottom: 0; right: 0;
-            width: 10px; height: 10px; border-radius: 50%;
-            background: var(--green-bright);
-            border: 2px solid var(--bg-secondary);
-        }
-        .member-name {
-            font-size: 14px; font-weight: 500;
-            color: var(--interactive-normal);
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-        .member-item:hover .member-name { color: var(--interactive-hover); }
-
-        /* Sidebar hidden on very small screens */
-        @media (max-width: 600px) {
-            .server-rail { width: 0; overflow: hidden; padding: 0; }
-            .sidebar { width: 0; overflow: hidden; }
-        }
-
-        /* Empty state */
-        .empty-state {
-            flex: 1; display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            gap: 12px; color: var(--text-muted);
-            padding: 40px;
-        }
-        .empty-state-icon { font-size: 48px; opacity: 0.3; }
-        .empty-state-title { font-size: 20px; font-weight: 700; color: var(--text-normal); }
-        .empty-state-sub { font-size: 14px; text-align: center; }
-    </style>
-</head>
-<body data-me="{{ session.username }}" data-channel="{{ channel }}">
-<div class="app">
-
-    <!-- SERVER RAIL -->
-    <nav class="server-rail">
-        <div class="server-icon active" title="DALEKS">◈</div>
-        <div class="server-rail-sep"></div>
-        <div class="server-icon" title="Refresh" onclick="location.href='/'">↻</div>
-    </nav>
-
-    <!-- SIDEBAR -->
-    <aside class="sidebar">
-        <div class="server-header">
-            <span class="server-header-name">DALEKS</span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="6 9 12 15 18 9"/>
-            </svg>
-        </div>
-
-        <div class="channel-section">
-            <div class="channel-section-label">Text Channels</div>
-            {% for ch in channels %}
-            <a href="{{ url_for('channel', channel_name=ch) }}" style="text-decoration:none;">
-                <div class="channel-item {{ 'active' if ch == channel else '' }}">
-                    <span class="ch-hash">#</span>
-                    <span>{{ ch }}</span>
-                </div>
-            </a>
-            {% endfor %}
-        </div>
-
-        <div class="channel-section">
-            <div class="channel-section-label">Pages</div>
-            {% if page > 1 %}
-            <a href="{{ url_for('channel', channel_name=channel, page=page - 1) }}" style="text-decoration:none;">
-                <div class="channel-item">
-                    <span class="ch-hash">‹</span>
-                    <span>newer</span>
-                </div>
-            </a>
-            {% endif %}
-            <a href="{{ url_for('channel', channel_name=channel, page=page + 1) }}" style="text-decoration:none;">
-                <div class="channel-item">
-                    <span class="ch-hash">›</span>
-                    <span>older</span>
-                </div>
-            </a>
-        </div>
-
-        <!-- User Panel -->
-        <div class="user-panel">
-            <div class="user-panel-avatar" id="selfAvatar">
-                {{ session.username[:2] | upper }}
-            </div>
-            <div class="user-panel-info">
-                <div class="user-panel-name">{{ session.username }}</div>
-                <div class="user-panel-tag">online</div>
-            </div>
-            <div class="user-panel-actions">
-                <a href="/logout" class="panel-btn" title="Logout">⏻</a>
-            </div>
-        </div>
-    </aside>
-
-    <!-- MAIN CHAT -->
-    <main class="main">
-        <!-- Channel Header -->
-        <div class="channel-topbar">
-            <span class="topbar-hash">#</span>
-            <span class="topbar-channel-name">{{ channel }}</span>
-            <div class="topbar-sep"></div>
-            <span class="topbar-topic">DALEKS · #{{ channel }} · page {{ page }}</span>
-            <div class="topbar-actions">
-                <a href="/" class="topbar-btn" title="Refresh">↻</a>
-            </div>
-        </div>
-
-        <!-- Messages -->
-        <div class="feed" id="chatBox">
-            {% if posts %}
-                <div class="system-msg">Welcome to #{{ channel }} · Page {{ page }}</div>
-
-                {% for post in posts %}
-                <div class="msg-group first-in-group"
-                     data-user="{{ post['username'] }}"
-                     data-id="{{ post['id'] }}">
-                    <div class="msg-avatar-col">
-                        <div class="msg-avatar av-0">{{ post['username'][:2] | upper }}</div>
-                    </div>
-                    <div class="msg-content-col">
-                        <div class="msg-header">
-                            <span class="msg-username un-0">{{ post['username'] }}</span>
-                            <span class="msg-timestamp" data-ts="{{ loop.index }}">Today</span>
-                        </div>
-                        <div class="msg-text">{{ post['content'] }}</div>
-                    </div>
-                </div>
-                {% endfor %}
-
-            {% else %}
-                <div class="empty-state">
-                    <div class="empty-state-icon">◈</div>
-                    <div class="empty-state-title">No messages yet</div>
-                    <div class="empty-state-sub">Be the first to transmit to the collective.</div>
-                </div>
-            {% endif %}
-        </div>
-
-        <!-- Composer -->
-        <div class="composer-wrap">
-            <div class="composer">
-                <div class="composer-plus">+</div>
-                <form action="/post" method="POST" style="flex:1;display:flex;align-items:center;gap:12px;">
-                    <input type="hidden" name="channel" value="{{ channel }}">
-                    <input name="content" placeholder="Message #{{ channel }}" required autocomplete="off" maxlength="500">
-                    <span class="composer-emoji">😊</span>
-                    <button type="submit" class="send-btn">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                             stroke="currentColor" stroke-width="2.5"
-                             stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="22" y1="2" x2="11" y2="13"/>
-                            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-                        </svg>
-                    </button>
-                </form>
-            </div>
-        </div>
-    </main>
-
-    <!-- MEMBER LIST -->
-    <aside class="member-list" id="memberList">
-        <div class="member-section-label">Online — <span id="onlineCount">0</span></div>
-        <div id="memberItems"></div>
-    </aside>
-
-</div>
-<script>
-    // ── Color index from username ──
-    function colorIdx(str) {
-        let h = 0;
-        for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
-        return Math.abs(h) % 8;
-    }
-
-    function escapeHtml(str) {
-        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-                  .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-    }
-
-    // ── Process rendered messages: apply colors, group consecutive ──
-    function processMessages(root) {
-        const groups = root.querySelectorAll('.msg-group');
-        let lastUser = null;
-        groups.forEach(g => {
-            const user = g.dataset.user || '';
-            const c = colorIdx(user);
-            const av = g.querySelector('.msg-avatar');
-            const un = g.querySelector('.msg-username');
-            if (av) { av.className = 'msg-avatar av-' + c; }
-            if (un) { un.className = 'msg-username un-' + c; }
-
-            if (user === lastUser) {
-                g.classList.add('compact');
-                // swap avatar for a timestamp
-                const col = g.querySelector('.msg-avatar-col');
-                if (col && !col.querySelector('.compact-time')) {
-                    col.innerHTML = '<div class="compact-time">—</div>';
-                }
-                // hide header
-                const hdr = g.querySelector('.msg-header');
-                if (hdr) hdr.style.display = 'none';
-            } else {
-                g.classList.remove('compact');
-            }
-            lastUser = user;
-        });
-    }
-
-    // ── Build member list from seen users ──
-    function buildMemberList() {
-        const seen = new Map();
-        document.querySelectorAll('.msg-group').forEach(g => {
-            const u = g.dataset.user;
-            if (u && !seen.has(u)) seen.set(u, colorIdx(u));
-        });
-        const container = document.getElementById('memberItems');
-        const countEl   = document.getElementById('onlineCount');
-        if (!container) return;
-        container.innerHTML = '';
-        seen.forEach((c, name) => {
-            const initials = name.slice(0,2).toUpperCase();
-            container.innerHTML += `
-                <div class="member-item">
-                    <div class="member-avatar av-${c}">${initials}</div>
-                    <div class="member-name">${escapeHtml(name)}</div>
-                </div>`;
-        });
-        if (countEl) countEl.textContent = seen.size;
-    }
-
-    // ── Self avatar color ──
-    const ME = document.body.dataset.me || '';
-    const selfAv = document.getElementById('selfAvatar');
-    if (selfAv && ME) {
-        const c = colorIdx(ME);
-        selfAv.style.background = ['#1e6e3e','#1a5c34','#1d6b3b','#7b2fab',
-                                    '#c87941','#1a6ea6','#a32b2b','#5b3fa6'][c];
-    }
-
-    const chatBox = document.getElementById('chatBox');
-    processMessages(chatBox);
-    buildMemberList();
-    chatBox.scrollTop = chatBox.scrollHeight;
-
-    let userScrolled = false;
-    chatBox.addEventListener('scroll', () => {
-        userScrolled = chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight > 80;
-    });
-
-    // ── Track last seen id ──
-    let lastId = 0;
-    chatBox.querySelectorAll('.msg-group[data-id]').forEach(g => {
-        const id = parseInt(g.dataset.id) || 0;
-        if (id > lastId) lastId = id;
-    });
-
-    // ── Build a new message group from JSON ──
-    function buildGroup(msg) {
-        const c = colorIdx(msg.username);
-        const initials = msg.username.slice(0,2).toUpperCase();
-        const div = document.createElement('div');
-        div.className = 'msg-group first-in-group';
-        div.dataset.user = msg.username;
-        div.dataset.id   = msg.id;
-        div.innerHTML = `
-            <div class="msg-avatar-col">
-                <div class="msg-avatar av-${c}">${initials}</div>
-            </div>
-            <div class="msg-content-col">
-                <div class="msg-header">
-                    <span class="msg-username un-${c}">${escapeHtml(msg.username)}</span>
-                    <span class="msg-timestamp">Just now</span>
-                </div>
-                <div class="msg-text">${escapeHtml(msg.content)}</div>
-            </div>`;
-        return div;
-    }
-
-    // Current channel (injected from Flask)
-    const CHANNEL = document.body.dataset.channel || 'general';
-
-    // Poll /poll?since=N&channel=X every 2s
-    setInterval(() => {
-        fetch('/poll?since=' + lastId + '&channel=' + CHANNEL)
-            .then(r => r.json())
-            .then(data => {
-                if (!data.messages || data.messages.length === 0) return;
-
-                // Remove empty state if present
-                const empty = chatBox.querySelector('.empty-state');
-                if (empty) {
-                    chatBox.innerHTML = '<div class="system-msg">Welcome to #' + CHANNEL + '</div>';
-                }
-
-                data.messages.forEach(msg => {
-                    if (msg.id > lastId) lastId = msg.id;
-                    chatBox.appendChild(buildGroup(msg));
-                });
-
-                processMessages(chatBox);
-                buildMemberList();
-                if (!userScrolled) chatBox.scrollTop = chatBox.scrollHeight;
-            }).catch(() => {});
-    }, 2000);
-</script>
-</body>
-</html>
+import os
+import hashlib
+from flask import Flask, render_template, request, session, redirect, url_for, jsonify
+from psycopg2.extras import RealDictCursor
+from psycopg2 import pool, IntegrityError
+
+app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'default-secret-key-123')
+
+DEFAULT_CHANNEL = 'general'
+
+# ── Lazy connection pool ──
+_db_pool = None
+
+def get_pool():
+    global _db_pool
+    if _db_pool is None:
+        _db_pool = pool.ThreadedConnectionPool(
+            minconn=2, maxconn=10,
+            dsn=os.environ.get('DATABASE_URL')
+        )
+    return _db_pool
+
+def get_db():
+    return get_pool().getconn()
+
+def release_db(conn):
+    get_pool().putconn(conn)
+
+def hash_password(password: str) -> str:
+    return hashlib.sha256(password.encode()).hexdigest()
+
+
+# ── MIGRATION: runs once on boot, safe to re-run ──
+def migrate_db():
+    conn = get_db()
+    try:
+        with conn.cursor() as cur:
+            # Add channel column to posts if missing
+            cur.execute("""
+                ALTER TABLE posts
+                ADD COLUMN IF NOT EXISTS channel VARCHAR(50) DEFAULT 'general'
+            """)
+            # Create channels table
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS channels (
+                    id         SERIAL PRIMARY KEY,
+                    name       VARCHAR(50) UNIQUE NOT NULL,
+                    password   VARCHAR(64),          -- NULL means no password
+                    created_by VARCHAR(100),
+                    created_at TIMESTAMP DEFAULT NOW()
+                )
+            """)
+            # Seed default channels (no password)
+            for ch in ['general', 'transmissions', 'off-topic']:
+                cur.execute("""
+                    INSERT INTO channels (name, password, created_by)
+                    VALUES (%s, NULL, 'system')
+                    ON CONFLICT (name) DO NOTHING
+                """, (ch,))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        print(f"Migration note: {e}")
+    finally:
+        release_db(conn)
+
+
+def get_all_channels():
+    conn = get_db()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute('SELECT name, password IS NOT NULL as locked FROM channels ORDER BY id')
+            return cur.fetchall()
+    finally:
+        release_db(conn)
+
+
+def channel_exists(name):
+    conn = get_db()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute('SELECT name, password FROM channels WHERE name = %s', (name,))
+            return cur.fetchone()
+    finally:
+        release_db(conn)
+
+
+# ── HOME ──
+@app.route('/')
+def home():
+    return redirect(url_for('channel', channel_name=DEFAULT_CHANNEL))
+
+
+# ── CHANNEL PAGE ──
+@app.route('/c/<channel_name>')
+def channel(channel_name):
+    if 'username' not in session:
+        return redirect(url_for('login'))
+
+    ch = channel_exists(channel_name)
+    if not ch:
+        return redirect(url_for('home'))
+
+    # If channel is locked, check session for access
+    if ch['password']:
+        granted = session.get('channel_access', {})
+        if channel_name not in granted:
+            # Redirect to password prompt
+            return redirect(url_for('channel_auth', channel_name=channel_name))
+
+    try:
+        page = max(1, int(request.args.get('page', 1)))
+    except ValueError:
+        page = 1
+
+    limit  = 15
+    offset = (page - 1) * limit
+
+    conn = get_db()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                'SELECT id, username, content FROM posts '
+                'WHERE channel = %s ORDER BY created_at DESC LIMIT %s OFFSET %s',
+                (channel_name, limit, offset)
+            )
+            posts = cur.fetchall()
+    finally:
+        release_db(conn)
+
+    channels = get_all_channels()
+
+    return render_template(
+        'home.html',
+        posts=posts[::-1],
+        page=page,
+        channel=channel_name,
+        channels=channels
+    )
+
+
+# ── CHANNEL PASSWORD AUTH ──
+@app.route('/c/<channel_name>/auth', methods=['GET', 'POST'])
+def channel_auth(channel_name):
+    if 'username' not in session:
+        return redirect(url_for('login'))
+
+    ch = channel_exists(channel_name)
+    if not ch or not ch['password']:
+        return redirect(url_for('channel', channel_name=channel_name))
+
+    error = None
+    if request.method == 'POST':
+        entered = request.form.get('password', '')
+        if hash_password(entered) == ch['password']:
+            # Store access in session
+            access = session.get('channel_access', {})
+            access[channel_name] = True
+            session['channel_access'] = access
+            return redirect(url_for('channel', channel_name=channel_name))
+        else:
+            error = 'Wrong password. Try again.'
+
+    channels = get_all_channels()
+    return render_template(
+        'channel_auth.html',
+        channel_name=channel_name,
+        error=error,
+        channels=channels
+    )
+
+
+# ── CREATE CHANNEL ──
+@app.route('/create-channel', methods=['POST'])
+def create_channel():
+    if 'username' not in session:
+        return jsonify({'error': 'unauthorized'}), 401
+
+    name     = request.form.get('name', '').strip().lower()
+    password = request.form.get('password', '').strip()
+
+    # Validate name: letters, numbers, hyphens only, max 30 chars
+    import re
+    if not name or not re.match(r'^[a-z0-9\-]{1,30}$', name):
+        return jsonify({'error': 'Invalid channel name. Use lowercase letters, numbers, hyphens only.'}), 400
+
+    hashed_pw = hash_password(password) if password else None
+
+    conn = get_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                'INSERT INTO channels (name, password, created_by) VALUES (%s, %s, %s)',
+                (name, hashed_pw, session['username'])
+            )
+        conn.commit()
+        # Grant creator instant access
+        if hashed_pw:
+            access = session.get('channel_access', {})
+            access[name] = True
+            session['channel_access'] = access
+        return jsonify({'ok': True, 'name': name})
+    except IntegrityError:
+        conn.rollback()
+        return jsonify({'error': 'Channel already exists.'}), 409
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        release_db(conn)
+
+
+# ── POLL ──
+@app.route('/poll')
+def poll():
+    if 'username' not in session:
+        return jsonify({'error': 'unauthorized'}), 401
+
+    channel_name = request.args.get('channel', DEFAULT_CHANNEL)
+    ch = channel_exists(channel_name)
+    if not ch:
+        return jsonify({'messages': []})
+
+    # Enforce access for locked channels
+    if ch['password']:
+        granted = session.get('channel_access', {})
+        if channel_name not in granted:
+            return jsonify({'error': 'forbidden'}), 403
+
+    since_id = request.args.get('since', 0, type=int)
+
+    conn = get_db()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                'SELECT id, username, content FROM posts '
+                'WHERE id > %s AND channel = %s ORDER BY id ASC LIMIT 30',
+                (since_id, channel_name)
+            )
+            rows = cur.fetchall()
+    finally:
+        release_db(conn)
+
+    return jsonify({'messages': [dict(r) for r in rows]})
+
+
+# ── POST ──
+@app.route('/post', methods=['POST'])
+def add_post():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+
+    content      = request.form.get('content', '').strip()
+    channel_name = request.form.get('channel', DEFAULT_CHANNEL)
+
+    ch = channel_exists(channel_name)
+    if not ch:
+        return redirect(url_for('home'))
+
+    # Enforce access
+    if ch['password']:
+        granted = session.get('channel_access', {})
+        if channel_name not in granted:
+            return redirect(url_for('channel_auth', channel_name=channel_name))
+
+    if not content or len(content) > 500:
+        return redirect(url_for('channel', channel_name=channel_name))
+
+    conn = get_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                'INSERT INTO posts (username, content, channel) VALUES (%s, %s, %s)',
+                (session['username'], content, channel_name)
+            )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        release_db(conn)
+
+    return redirect(url_for('channel', channel_name=channel_name))
+
+
+# ── LOGIN ──
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        user = request.form.get('username', '').strip()
+        pwd  = request.form.get('password', '')
+
+        conn = get_db()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    'SELECT username FROM users WHERE username=%s AND password=%s',
+                    (user, hash_password(pwd))
+                )
+                user_data = cur.fetchone()
+        finally:
+            release_db(conn)
+
+        if user_data:
+            session['username'] = user
+            return redirect(url_for('home'))
+        return "Invalid login! <a href='/login'>Try again</a>"
+
+    return render_template('login.html')
+
+
+# ── REGISTER ──
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        user = request.form.get('username', '').strip()
+        pwd  = request.form.get('password', '')
+
+        if not user or not pwd:
+            return "Username and password required. <a href='/register'>Try again</a>"
+
+        conn = get_db()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    'INSERT INTO users (username, password) VALUES (%s, %s)',
+                    (user, hash_password(pwd))
+                )
+            conn.commit()
+            return redirect(url_for('login'))
+        except IntegrityError:
+            conn.rollback()
+            return "Username already exists! <a href='/register'>Try again</a>"
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            release_db(conn)
+
+    return render_template('register.html')
+
+
+# ── LOGOUT ──
+@app.route('/logout')
+def logout():
+    session.pop('username', None)
+    session.pop('channel_access', None)
+    return redirect(url_for('login'))
+
+
+if __name__ == '__main__':
+    migrate_db()
+    port = int(os.environ.get('PORT', 10000))
+    app.run(host='0.0.0.0', port=port)
