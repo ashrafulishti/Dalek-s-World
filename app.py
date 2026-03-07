@@ -8,6 +8,11 @@ from psycopg2 import pool, IntegrityError
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'default-secret-key-123')
 
+@app.template_filter('fmtts')
+def format_ts(dt):
+    if not dt: return ''
+    return dt.strftime('%-I:%M %p')
+
 DEFAULT_CHANNEL = 'general'
 HARDCODED_ADMIN = 'ashrafulishti'   # only this user can access /admin
 
@@ -143,7 +148,7 @@ def channel(channel_name):
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
-                'SELECT id, username, content FROM posts WHERE channel=%s '
+                'SELECT id, username, content, created_at FROM posts WHERE channel=%s '
                 'ORDER BY created_at DESC LIMIT %s OFFSET %s',
                 (channel_name, limit, offset)
             )
@@ -153,7 +158,8 @@ def channel(channel_name):
 
     return render_template('home.html',
         posts=posts[::-1], page=page,
-        channel=channel_name, channels=get_all_channels())
+        channel=channel_name, all_channels=get_all_channels(),
+        is_admin=(session.get('username') == HARDCODED_ADMIN))
 
 
 # ── CHANNEL AUTH (password prompt for locked channels) ──
@@ -273,13 +279,18 @@ def poll():
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
-                'SELECT id, username, content FROM posts WHERE id>%s AND channel=%s ORDER BY id ASC LIMIT 30',
+                'SELECT id, username, content, created_at FROM posts WHERE id>%s AND channel=%s ORDER BY id ASC LIMIT 30',
                 (since_id, channel_name)
             )
             rows = cur.fetchall()
     finally:
         release_db(conn)
-    return jsonify({'messages': [dict(r) for r in rows]})
+    return jsonify({'messages': [{
+        'id': r['id'],
+        'username': r['username'],
+        'content': r['content'],
+        'ts': r['created_at'].strftime('%-I:%M %p') if r.get('created_at') else ''
+    } for r in rows]})
 
 
 # ── POST ──
