@@ -7,15 +7,19 @@
         body { background: #000; color: #0f0; font-family: 'Courier Prime', monospace; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
         .box { border: 1px solid #0f0; padding: 25px; width: 85%; max-width: 320px; text-align: center; }
         h1 { font-size: 24px; margin-bottom: 5px; }
-        input { width: 100%; background: #000; color: #0f0; border: 1px solid #0f0; padding: 12px; margin: 10px 0; box-sizing: border-box; }
-        button { width: 100%; background: #0f0; color: #000; border: none; padding: 12px; font-weight: bold; cursor: pointer; }
+        input { width: 100%; background: #000; color: #0f0; border: 1px solid #0f0; padding: 12px; margin: 10px 0; box-sizing: border-box; font-family: 'Courier Prime', monospace; outline: none; }
+        input:focus { box-shadow: 0 0 8px rgba(0,255,0,0.2); }
+        button { width: 100%; background: #0f0; color: #000; border: none; padding: 12px; font-weight: bold; cursor: pointer; font-family: 'Courier Prime', monospace; font-size: 14px; }
+        button:hover { background: #fff; }
         a { color: #0f0; text-decoration: none; font-size: 13px; display: block; margin-top: 15px; }
+        .error { color: #f44; font-size: 12px; margin: 8px 0; border: 1px solid #600; padding: 8px; background: rgba(255,0,0,0.05); }
     </style>
 </head>
 <body>
     <div class="box">
         <h1>DALEK'S WORLD</h1>
         <small>by ashrafulishti</small>
+        {% if error %}<div class="error">⚠ {{ error }}</div>{% endif %}
         <form method="POST">
             <input name="username" placeholder="USER_ID" required>
             <input name="password" type="password" placeholder="ACCESS_KEY" required>
