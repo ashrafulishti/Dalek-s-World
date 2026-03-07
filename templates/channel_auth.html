@@ -1,366 +1,191 @@
-import os
-import re
-import hashlib
-from flask import Flask, render_template, request, session, redirect, url_for, jsonify
-from psycopg2.extras import RealDictCursor
-from psycopg2 import pool, IntegrityError
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DALEKS · #{{ channel_name }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'default-secret-key-123')
+        body {
+            background: #000;
+            color: #0f0;
+            font-family: 'Courier Prime', monospace;
+            min-height: 100dvh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
 
-DEFAULT_CHANNEL = 'general'
-HARDCODED_ADMIN = 'ashrafulishti'   # only this user can access /admin
+        .wrap {
+            width: 90%;
+            max-width: 360px;
+            text-align: center;
+        }
 
-# ── Connection pool ──
-_db_pool = None
+        .lock-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
-def get_pool():
-    global _db_pool
-    if _db_pool is None:
-        _db_pool = pool.ThreadedConnectionPool(
-            minconn=2, maxconn=10,
-            dsn=os.environ.get('DATABASE_URL')
-        )
-    return _db_pool
+        .title {
+            font-size: 22px;
+            letter-spacing: 0.15em;
+            margin-bottom: 4px;
+        }
 
-def get_db():
-    return get_pool().getconn()
+        .subtitle {
+            font-size: 12px;
+            color: #0a0;
+            letter-spacing: 0.1em;
+            margin-bottom: 28px;
+        }
 
-def release_db(conn):
-    get_pool().putconn(conn)
+        .channel-badge {
+            display: inline-block;
+            background: rgba(0,255,0,0.08);
+            border: 1px solid #0a0;
+            padding: 4px 14px;
+            border-radius: 3px;
+            font-size: 13px;
+            letter-spacing: 0.12em;
+            margin-bottom: 28px;
+            color: #0f0;
+        }
 
-def hash_password(pw: str) -> str:
-    return hashlib.sha256(pw.encode()).hexdigest()
+        .form-group {
+            position: relative;
+            margin-bottom: 14px;
+        }
 
+        .form-group input {
+            width: 100%;
+            background: rgba(0,255,0,0.04);
+            color: #0f0;
+            border: 1px solid #0a0;
+            padding: 12px 14px;
+            font-family: 'Courier Prime', monospace;
+            font-size: 14px;
+            letter-spacing: 0.08em;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-group input:focus {
+            border-color: #0f0;
+            box-shadow: 0 0 10px rgba(0,255,0,0.12);
+        }
+        .form-group input::placeholder { color: #0a0; }
 
-# ── MIGRATION ──
-def migrate_db():
-    conn = get_db()
-    try:
-        with conn.cursor() as cur:
-            cur.execute("ALTER TABLE posts ADD COLUMN IF NOT EXISTS channel VARCHAR(50) DEFAULT 'general'")
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS channels (
-                    id         SERIAL PRIMARY KEY,
-                    name       VARCHAR(50) UNIQUE NOT NULL,
-                    password   VARCHAR(64),
-                    created_by VARCHAR(100),
-                    created_at TIMESTAMP DEFAULT NOW()
-                )
-            """)
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS channel_admins (
-                    id         SERIAL PRIMARY KEY,
-                    channel    VARCHAR(50) NOT NULL,
-                    username   VARCHAR(100) NOT NULL,
-                    UNIQUE(channel, username)
-                )
-            """)
-            # Seed channels: general and fun are open, secret is locked
-            for ch, pw in [('general', None), ('fun', None), ('secret', hash_password('changeme'))]:
-                cur.execute("""
-                    INSERT INTO channels (name, password, created_by)
-                    VALUES (%s, %s, 'system')
-                    ON CONFLICT (name) DO NOTHING
-                """, (ch, pw))
-            # Seed ashrafulishti as admin of secret channel
-            cur.execute("""
-                INSERT INTO channel_admins (channel, username)
-                VALUES ('secret', %s)
-                ON CONFLICT DO NOTHING
-            """, (HARDCODED_ADMIN,))
-        conn.commit()
-    except Exception as e:
-        conn.rollback()
-        print(f"Migration: {e}")
-    finally:
-        release_db(conn)
+        .btn {
+            width: 100%;
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 12px;
+            font-family: 'Courier Prime', monospace;
+            font-size: 14px;
+            font-weight: bold;
+            letter-spacing: 0.12em;
+            cursor: pointer;
+            transition: background 0.15s, box-shadow 0.15s;
+            margin-top: 4px;
+        }
+        .btn:hover { background: #fff; box-shadow: 0 0 12px rgba(0,255,0,0.3); }
 
+        .error {
+            background: rgba(255,0,0,0.08);
+            border: 1px solid #600;
+            color: #f44;
+            padding: 10px 14px;
+            font-size: 12px;
+            letter-spacing: 0.08em;
+            margin-bottom: 14px;
+        }
 
-# ── Helpers ──
-def get_all_channels():
-    conn = get_db()
-    try:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute('SELECT name, password IS NOT NULL as locked FROM channels ORDER BY id')
-            return cur.fetchall()
-    finally:
-        release_db(conn)
+        .back-link {
+            display: block;
+            margin-top: 20px;
+            font-size: 12px;
+            color: #0a0;
+            text-decoration: none;
+            letter-spacing: 0.1em;
+            transition: color 0.15s;
+        }
+        .back-link:hover { color: #0f0; }
 
-def get_channel(name):
-    conn = get_db()
-    try:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute('SELECT name, password FROM channels WHERE name=%s', (name,))
-            return cur.fetchone()
-    finally:
-        release_db(conn)
+        .divider {
+            border: none;
+            border-top: 1px solid #0a0;
+            opacity: 0.2;
+            margin: 28px 0 20px;
+        }
 
-def has_channel_access(channel_name, ch):
-    """Returns True if current user can access this channel."""
-    if not ch['password']:
-        return True
-    # hardcoded admin always has access
-    if session.get('username') == HARDCODED_ADMIN:
-        return True
-    granted = session.get('channel_access', {})
-    return channel_name in granted
+        .other-channels-label {
+            font-size: 10px;
+            color: #0a0;
+            letter-spacing: 0.15em;
+            margin-bottom: 10px;
+        }
 
-def get_channel_admins(channel_name):
-    conn = get_db()
-    try:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute('SELECT username FROM channel_admins WHERE channel=%s ORDER BY id', (channel_name,))
-            return [r['username'] for r in cur.fetchall()]
-    finally:
-        release_db(conn)
+        .channel-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
 
+        .channel-link {
+            text-decoration: none;
+            font-size: 12px;
+            color: #0a0;
+            border: 1px solid #0a0;
+            padding: 4px 10px;
+            border-radius: 3px;
+            letter-spacing: 0.08em;
+            transition: all 0.15s;
+        }
+        .channel-link:hover { color: #0f0; border-color: #0f0; background: rgba(0,255,0,0.06); }
+        .channel-link.locked::after { content: ' 🔒'; font-size: 10px; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="lock-icon">🔒</div>
+    <div class="title">RESTRICTED CHANNEL</div>
+    <div class="subtitle">AUTHENTICATION REQUIRED</div>
+    <div class="channel-badge"># {{ channel_name }}</div>
 
-# ── HOME ──
-@app.route('/')
-def home():
-    return redirect(url_for('channel', channel_name=DEFAULT_CHANNEL))
+    {% if error %}
+    <div class="error">⚠ {{ error }}</div>
+    {% endif %}
 
+    <form method="POST">
+        <div class="form-group">
+            <input type="password" name="password"
+                   placeholder="ENTER CHANNEL PASSWORD"
+                   autofocus required>
+        </div>
+        <button type="submit" class="btn">AUTHENTICATE</button>
+    </form>
 
-# ── CHANNEL ──
-@app.route('/c/<channel_name>')
-def channel(channel_name):
-    if 'username' not in session:
-        return redirect(url_for('login'))
-    ch = get_channel(channel_name)
-    if not ch:
-        return redirect(url_for('home'))
-    if not has_channel_access(channel_name, ch):
-        return redirect(url_for('channel_auth', channel_name=channel_name))
+    <a href="{{ url_for('home') }}" class="back-link">← BACK TO GENERAL</a>
 
-    try:
-        page = max(1, int(request.args.get('page', 1)))
-    except ValueError:
-        page = 1
-
-    limit, offset = 15, (page - 1) * 15
-    conn = get_db()
-    try:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(
-                'SELECT id, username, content FROM posts WHERE channel=%s '
-                'ORDER BY created_at DESC LIMIT %s OFFSET %s',
-                (channel_name, limit, offset)
-            )
-            posts = cur.fetchall()
-    finally:
-        release_db(conn)
-
-    return render_template('home.html',
-        posts=posts[::-1], page=page,
-        channel=channel_name, channels=get_all_channels())
-
-
-# ── CHANNEL AUTH (password prompt for locked channels) ──
-@app.route('/c/<channel_name>/auth', methods=['GET', 'POST'])
-def channel_auth(channel_name):
-    if 'username' not in session:
-        return redirect(url_for('login'))
-    ch = get_channel(channel_name)
-    if not ch or not ch['password']:
-        return redirect(url_for('channel', channel_name=channel_name))
-
-    error = None
-    if request.method == 'POST':
-        if hash_password(request.form.get('password', '')) == ch['password']:
-            acc = session.get('channel_access', {})
-            acc[channel_name] = True
-            session['channel_access'] = acc
-            return redirect(url_for('channel', channel_name=channel_name))
-        error = 'Wrong password.'
-
-    return render_template('channel_auth.html',
-        channel_name=channel_name, error=error,
-        channels=get_all_channels())
-
-
-# ── ADMIN PANEL (ashrafulishti only) ──
-@app.route('/admin', methods=['GET', 'POST'])
-def admin():
-    if session.get('username') != HARDCODED_ADMIN:
-        return redirect(url_for('home'))
-
-    msg = None
-
-    if request.method == 'POST':
-        action = request.form.get('action')
-        target_ch = request.form.get('channel', 'secret')
-
-        if action == 'add_admin':
-            new_user = request.form.get('username', '').strip()
-            if new_user:
-                conn = get_db()
-                try:
-                    with conn.cursor() as cur:
-                        cur.execute('INSERT INTO channel_admins (channel, username) VALUES (%s,%s) ON CONFLICT DO NOTHING', (target_ch, new_user))
-                    conn.commit()
-                    msg = f'Added {new_user} to #{target_ch}'
-                except Exception as e:
-                    conn.rollback(); msg = str(e)
-                finally:
-                    release_db(conn)
-
-        elif action == 'remove_admin':
-            rem_user = request.form.get('username', '').strip()
-            if rem_user:
-                conn = get_db()
-                try:
-                    with conn.cursor() as cur:
-                        cur.execute('DELETE FROM channel_admins WHERE channel=%s AND username=%s', (target_ch, rem_user))
-                    conn.commit()
-                    msg = f'Removed {rem_user} from #{target_ch}'
-                except Exception as e:
-                    conn.rollback(); msg = str(e)
-                finally:
-                    release_db(conn)
-
-        elif action == 'change_password':
-            new_pw = request.form.get('new_password', '').strip()
-            if new_pw:
-                conn = get_db()
-                try:
-                    with conn.cursor() as cur:
-                        cur.execute('UPDATE channels SET password=%s WHERE name=%s', (hash_password(new_pw), target_ch))
-                    conn.commit()
-                    msg = f'Password updated for #{target_ch}'
-                except Exception as e:
-                    conn.rollback(); msg = str(e)
-                finally:
-                    release_db(conn)
-
-        elif action == 'remove_password':
-            conn = get_db()
-            try:
-                with conn.cursor() as cur:
-                    cur.execute('UPDATE channels SET password=NULL WHERE name=%s', (target_ch,))
-                conn.commit()
-                msg = f'#{target_ch} is now public'
-            except Exception as e:
-                conn.rollback(); msg = str(e)
-            finally:
-                release_db(conn)
-
-    # Gather data for all locked channels
-    all_channels = get_all_channels()
-    locked = [c for c in all_channels if c['locked']]
-    admins_by_channel = {c['name']: get_channel_admins(c['name']) for c in locked}
-
-    return render_template('admin.html',
-        all_channels=all_channels,
-        locked=locked,
-        admins_by_channel=admins_by_channel,
-        msg=msg)
-
-
-# ── POLL ──
-@app.route('/poll')
-def poll():
-    if 'username' not in session:
-        return jsonify({'error': 'unauthorized'}), 401
-    channel_name = request.args.get('channel', DEFAULT_CHANNEL)
-    ch = get_channel(channel_name)
-    if not ch:
-        return jsonify({'messages': []})
-    if not has_channel_access(channel_name, ch):
-        return jsonify({'error': 'forbidden'}), 403
-    since_id = request.args.get('since', 0, type=int)
-    conn = get_db()
-    try:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(
-                'SELECT id, username, content FROM posts WHERE id>%s AND channel=%s ORDER BY id ASC LIMIT 30',
-                (since_id, channel_name)
-            )
-            rows = cur.fetchall()
-    finally:
-        release_db(conn)
-    return jsonify({'messages': [dict(r) for r in rows]})
-
-
-# ── POST ──
-@app.route('/post', methods=['POST'])
-def add_post():
-    if 'username' not in session:
-        return redirect(url_for('login'))
-    content = request.form.get('content', '').strip()
-    channel_name = request.form.get('channel', DEFAULT_CHANNEL)
-    ch = get_channel(channel_name)
-    if not ch or not has_channel_access(channel_name, ch):
-        return redirect(url_for('channel_auth', channel_name=channel_name))
-    if not content or len(content) > 500:
-        return redirect(url_for('channel', channel_name=channel_name))
-    conn = get_db()
-    try:
-        with conn.cursor() as cur:
-            cur.execute('INSERT INTO posts (username, content, channel) VALUES (%s,%s,%s)',
-                        (session['username'], content, channel_name))
-        conn.commit()
-    except Exception:
-        conn.rollback(); raise
-    finally:
-        release_db(conn)
-    return redirect(url_for('channel', channel_name=channel_name))
-
-
-# ── LOGIN ──
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        user = request.form.get('username', '').strip()
-        pwd  = request.form.get('password', '')
-        conn = get_db()
-        try:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute('SELECT username FROM users WHERE username=%s AND password=%s',
-                            (user, hash_password(pwd)))
-                row = cur.fetchone()
-        finally:
-            release_db(conn)
-        if row:
-            session['username'] = user
-            return redirect(url_for('home'))
-        return render_template('login.html', error='Invalid credentials.')
-    return render_template('login.html', error=None)
-
-
-# ── REGISTER ──
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    if request.method == 'POST':
-        user = request.form.get('username', '').strip()
-        pwd  = request.form.get('password', '')
-        if not user or not pwd:
-            return render_template('register.html', error='Fill in all fields.')
-        conn = get_db()
-        try:
-            with conn.cursor() as cur:
-                cur.execute('INSERT INTO users (username, password) VALUES (%s,%s)',
-                            (user, hash_password(pwd)))
-            conn.commit()
-            return redirect(url_for('login'))
-        except IntegrityError:
-            conn.rollback()
-            return render_template('register.html', error='Username already exists.')
-        except Exception:
-            conn.rollback(); raise
-        finally:
-            release_db(conn)
-    return render_template('register.html', error=None)
-
-
-# ── LOGOUT ──
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect(url_for('login'))
-
-
-if __name__ == '__main__':
-    migrate_db()
-    port = int(os.environ.get('PORT', 10000))
-    app.run(host='0.0.0.0', port=port)
+    {% if channels %}
+    <hr class="divider">
+    <div class="other-channels-label">OTHER CHANNELS</div>
+    <div class="channel-list">
+        {% for ch in channels %}
+            {% if ch.name != channel_name %}
+            <a href="{{ url_for('channel', channel_name=ch.name) }}"
+               class="channel-link {{ 'locked' if ch.locked else '' }}">
+                #{{ ch.name }}
+            </a>
+            {% endif %}
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+</body>
+</html>
