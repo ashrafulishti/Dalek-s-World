@@ -97,12 +97,14 @@ def safe_compare(a: str, b: str) -> bool:
 
 
 # ── Migration ──
+# Creates everything from scratch if tables don't exist.
+# Safe to run on every startup — all statements use IF NOT EXISTS.
 def migrate_db():
     conn = get_db()
     try:
         with conn.cursor() as cur:
 
-            # users table — created first, everything depends on it
+            # 1. users table — must exist before posts or anything else
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     id         SERIAL PRIMARY KEY,
@@ -113,7 +115,7 @@ def migrate_db():
                 )
             """)
 
-            # posts table
+            # 2. posts table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS posts (
                     id         SERIAL PRIMARY KEY,
@@ -124,7 +126,7 @@ def migrate_db():
                 )
             """)
 
-            # channels table
+            # 3. channels table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS channels (
                     id         SERIAL PRIMARY KEY,
@@ -135,21 +137,21 @@ def migrate_db():
                 )
             """)
 
-            # channel_admins table
+            # 4. channel_admins table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS channel_admins (
-                    id         SERIAL PRIMARY KEY,
-                    channel    VARCHAR(50) NOT NULL,
-                    username   VARCHAR(100) NOT NULL,
+                    id       SERIAL PRIMARY KEY,
+                    channel  VARCHAR(50) NOT NULL,
+                    username VARCHAR(100) NOT NULL,
                     UNIQUE(channel, username)
                 )
             """)
 
-            # Safe ALTERs for existing deployments with old schema
-            cur.execute("ALTER TABLE posts ADD COLUMN IF NOT EXISTS channel VARCHAR(50) DEFAULT 'general'")
+            # 5. Backfill columns for anyone upgrading from an older version
             cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE")
+            cur.execute("ALTER TABLE posts ADD COLUMN IF NOT EXISTS channel VARCHAR(50) DEFAULT 'general'")
 
-            # Seed default channels
+            # 6. Seed default channels
             for ch, pw in [('general', None), ('fun', None), ('secret', hash_password('changeme'))]:
                 cur.execute("""
                     INSERT INTO channels (name, password, created_by)
@@ -320,7 +322,9 @@ def admin():
         if action in ('add_admin', 'remove_admin', 'change_password', 'remove_password'):
             if not get_channel(target_ch):
                 msg = 'Channel not found.'
-            elif action == 'add_admin':
+
+        if not msg:
+            if action == 'add_admin':
                 new_user = request.form.get('username', '').strip()
                 err = validate_username(new_user) if new_user else 'No username provided.'
                 if err:
@@ -331,8 +335,7 @@ def admin():
                         with conn.cursor() as cur:
                             cur.execute(
                                 'INSERT INTO channel_admins (channel, username) VALUES (%s,%s) ON CONFLICT DO NOTHING',
-                                (target_ch, new_user)
-                            )
+                                (target_ch, new_user))
                         conn.commit()
                         msg = f'Added {new_user} to #{target_ch}'
                     except Exception as e:
@@ -346,10 +349,7 @@ def admin():
                     conn = get_db()
                     try:
                         with conn.cursor() as cur:
-                            cur.execute(
-                                'DELETE FROM channel_admins WHERE channel=%s AND username=%s',
-                                (target_ch, rem_user)
-                            )
+                            cur.execute('DELETE FROM channel_admins WHERE channel=%s AND username=%s', (target_ch, rem_user))
                         conn.commit()
                         msg = f'Removed {rem_user} from #{target_ch}'
                     except Exception as e:
@@ -366,10 +366,7 @@ def admin():
                     conn = get_db()
                     try:
                         with conn.cursor() as cur:
-                            cur.execute(
-                                'UPDATE channels SET password=%s WHERE name=%s',
-                                (hash_password(new_pw), target_ch)
-                            )
+                            cur.execute('UPDATE channels SET password=%s WHERE name=%s', (hash_password(new_pw), target_ch))
                         conn.commit()
                         msg = f'Password updated for #{target_ch}'
                     except Exception as e:
@@ -389,41 +386,38 @@ def admin():
                 finally:
                     release_db(conn)
 
-        elif action == 'grant_admin':
-            target_user = request.form.get('username', '').strip()
-            err = validate_username(target_user) if target_user else 'No username provided.'
-            if err:
-                msg = err
-            else:
-                conn = get_db()
-                try:
-                    with conn.cursor() as cur:
-                        cur.execute('UPDATE users SET is_admin=TRUE WHERE username=%s', (target_user,))
-                        if cur.rowcount == 0:
-                            msg = f'User "{target_user}" not found.'
-                        else:
-                            conn.commit()
-                            msg = f'{target_user} granted site admin.'
-                except Exception as e:
-                    conn.rollback(); msg = str(e)
-                finally:
-                    release_db(conn)
+            elif action == 'grant_admin':
+                target_user = request.form.get('username', '').strip()
+                err = validate_username(target_user) if target_user else 'No username provided.'
+                if err:
+                    msg = err
+                else:
+                    conn = get_db()
+                    try:
+                        with conn.cursor() as cur:
+                            cur.execute('UPDATE users SET is_admin=TRUE WHERE username=%s', (target_user,))
+                            msg = f'{target_user} granted site admin.' if cur.rowcount else f'User {target_user} not found.'
+                        conn.commit()
+                    except Exception as e:
+                        conn.rollback(); msg = str(e)
+                    finally:
+                        release_db(conn)
 
-        elif action == 'revoke_admin':
-            target_user = request.form.get('username', '').strip()
-            if target_user == session.get('username'):
-                msg = 'You cannot revoke your own admin access.'
-            elif target_user:
-                conn = get_db()
-                try:
-                    with conn.cursor() as cur:
-                        cur.execute('UPDATE users SET is_admin=FALSE WHERE username=%s', (target_user,))
-                    conn.commit()
-                    msg = f'{target_user} admin access revoked.'
-                except Exception as e:
-                    conn.rollback(); msg = str(e)
-                finally:
-                    release_db(conn)
+            elif action == 'revoke_admin':
+                target_user = request.form.get('username', '').strip()
+                if target_user == session.get('username'):
+                    msg = 'You cannot revoke your own admin access.'
+                elif target_user:
+                    conn = get_db()
+                    try:
+                        with conn.cursor() as cur:
+                            cur.execute('UPDATE users SET is_admin=FALSE WHERE username=%s', (target_user,))
+                        conn.commit()
+                        msg = f'{target_user} admin access revoked.'
+                    except Exception as e:
+                        conn.rollback(); msg = str(e)
+                    finally:
+                        release_db(conn)
 
     all_channels = get_all_channels()
     locked = [c for c in all_channels if c['locked']]
@@ -583,7 +577,7 @@ def forbidden(e):
     return render_template('login.html', error='Access denied.'), 403
 
 
-# ── Runs at startup under both gunicorn and direct python ──
+# Runs on every startup — works with both gunicorn and direct python
 migrate_db()
 
 if __name__ == '__main__':
