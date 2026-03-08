@@ -499,8 +499,10 @@ def add_post():
                 (session['username'], content, channel_name)
             )
         conn.commit()
-    except Exception:
-        conn.rollback(); raise
+    except Exception as e:
+        conn.rollback()
+        print(f"Post error: {e}")
+        return redirect(url_for('channel', channel_name=channel_name))
     finally:
         release_db(conn)
     return redirect(url_for('channel', channel_name=channel_name))
@@ -557,8 +559,9 @@ def register():
         except IntegrityError:
             conn.rollback()
             return render_template('register.html', error='Username already exists.')
-        except Exception:
-            conn.rollback(); raise
+        except Exception as e:
+            conn.rollback()
+            return render_template('register.html', error='Server error, please try again.')
         finally:
             release_db(conn)
     return render_template('register.html', error=None)
