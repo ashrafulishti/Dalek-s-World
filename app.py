@@ -1,12 +1,28 @@
 import os
 import re
 import hashlib
-from flask import Flask, render_template, request, session, redirect, url_for, jsonify
+import hmac
+import time
+from functools import wraps
+from flask import Flask, render_template, request, session, redirect, url_for, jsonify, abort
 from psycopg2.extras import RealDictCursor
 from psycopg2 import pool, IntegrityError
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'default-secret-key-123')
+
+# ── Secret key ──
+_secret = os.environ.get('SECRET_KEY', '')
+if not _secret or _secret == 'default-secret-key-123':
+    raise RuntimeError("SECRET_KEY environment variable must be set to a strong random value.")
+app.secret_key = _secret
+
+# ── Session hardening ──
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    SESSION_COOKIE_SECURE=os.environ.get('FLASK_ENV') != 'development',
+    PERMANENT_SESSION_LIFETIME=3600,
+)
 
 @app.template_filter('fmtts')
 def format_ts(dt):
@@ -14,9 +30,48 @@ def format_ts(dt):
     return dt.strftime('%-I:%M %p')
 
 DEFAULT_CHANNEL = 'general'
-HARDCODED_ADMIN = 'ashrafulishti'   # only this user can access /admin
 
-# ── Connection pool ──
+# ── Rate limiting (in-memory, per-IP) ──
+_rate_store: dict[str, list[float]] = {}
+
+def _get_ip() -> str:
+    return request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0].strip()
+
+def rate_limited(max_calls: int = 10, window: int = 60):
+    def decorator(fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            if request.method == 'POST':
+                ip  = _get_ip()
+                now = time.time()
+                hits = [t for t in _rate_store.get(ip, []) if now - t < window]
+                if len(hits) >= max_calls:
+                    return render_template(
+                        request.endpoint + '.html',
+                        error='Too many attempts. Please wait a minute.'
+                    ), 429
+                hits.append(now)
+                _rate_store[ip] = hits
+            return fn(*args, **kwargs)
+        return wrapper
+    return decorator
+
+# ── Validation ──
+USERNAME_RE = re.compile(r'^[A-Za-z0-9_]{3,32}$')
+
+def validate_username(u: str) -> str | None:
+    if not USERNAME_RE.match(u):
+        return 'Username must be 3–32 chars: letters, numbers, underscores only.'
+    return None
+
+def validate_password(p: str) -> str | None:
+    if len(p) < 8:
+        return 'Password must be at least 8 characters.'
+    if len(p) > 128:
+        return 'Password too long.'
+    return None
+
+# ── DB pool ──
 _db_pool = None
 
 def get_pool():
@@ -37,13 +92,22 @@ def release_db(conn):
 def hash_password(pw: str) -> str:
     return hashlib.sha256(pw.encode()).hexdigest()
 
+def safe_compare(a: str, b: str) -> bool:
+    return hmac.compare_digest(a.encode(), b.encode())
 
-# ── MIGRATION ──
+
+# ── Migration ──
 def migrate_db():
     conn = get_db()
     try:
         with conn.cursor() as cur:
+            # posts table
             cur.execute("ALTER TABLE posts ADD COLUMN IF NOT EXISTS channel VARCHAR(50) DEFAULT 'general'")
+
+            # users: add is_admin column
+            cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE")
+
+            # channels table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS channels (
                     id         SERIAL PRIMARY KEY,
@@ -53,6 +117,8 @@ def migrate_db():
                     created_at TIMESTAMP DEFAULT NOW()
                 )
             """)
+
+            # channel_admins table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS channel_admins (
                     id         SERIAL PRIMARY KEY,
@@ -61,23 +127,19 @@ def migrate_db():
                     UNIQUE(channel, username)
                 )
             """)
-            # Seed channels: general and fun are open, secret is locked
+
+            # Seed default channels
             for ch, pw in [('general', None), ('fun', None), ('secret', hash_password('changeme'))]:
                 cur.execute("""
                     INSERT INTO channels (name, password, created_by)
                     VALUES (%s, %s, 'system')
                     ON CONFLICT (name) DO NOTHING
                 """, (ch, pw))
-            # Seed ashrafulishti as admin of secret channel
-            cur.execute("""
-                INSERT INTO channel_admins (channel, username)
-                VALUES ('secret', %s)
-                ON CONFLICT DO NOTHING
-            """, (HARDCODED_ADMIN,))
+
         conn.commit()
     except Exception as e:
         conn.rollback()
-        print(f"Migration: {e}")
+        print(f"Migration error: {e}")
     finally:
         release_db(conn)
 
@@ -102,11 +164,9 @@ def get_channel(name):
         release_db(conn)
 
 def has_channel_access(channel_name, ch):
-    """Returns True if current user can access this channel."""
     if not ch['password']:
         return True
-    # hardcoded admin always has access
-    if session.get('username') == HARDCODED_ADMIN:
+    if session.get('is_admin'):
         return True
     granted = session.get('channel_access', {})
     return channel_name in granted
@@ -120,6 +180,40 @@ def get_channel_admins(channel_name):
     finally:
         release_db(conn)
 
+# ── Decorators ──
+def login_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if 'username' not in session:
+            return redirect(url_for('login'))
+        return fn(*args, **kwargs)
+    return wrapper
+
+def admin_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if not session.get('is_admin'):
+            abort(403)
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+# ── Security headers ──
+@app.after_request
+def set_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src https://fonts.gstatic.com; "
+        "img-src 'self' data:; "
+        "connect-src 'self';"
+    )
+    return response
+
 
 # ── HOME ──
 @app.route('/')
@@ -129,9 +223,11 @@ def home():
 
 # ── CHANNEL ──
 @app.route('/c/<channel_name>')
+@login_required
 def channel(channel_name):
-    if 'username' not in session:
-        return redirect(url_for('login'))
+    if not re.match(r'^[A-Za-z0-9_-]{1,50}$', channel_name):
+        return redirect(url_for('home'))
+
     ch = get_channel(channel_name)
     if not ch:
         return redirect(url_for('home'))
@@ -148,8 +244,8 @@ def channel(channel_name):
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
-                'SELECT id, username, content, created_at FROM posts WHERE channel=%s '
-                'ORDER BY created_at DESC LIMIT %s OFFSET %s',
+                'SELECT id, username, content, created_at FROM posts '
+                'WHERE channel=%s ORDER BY created_at DESC LIMIT %s OFFSET %s',
                 (channel_name, limit, offset)
             )
             posts = cur.fetchall()
@@ -158,22 +254,26 @@ def channel(channel_name):
 
     return render_template('home.html',
         posts=posts[::-1], page=page,
-        channel=channel_name, all_channels=get_all_channels(),
-        is_admin=(session.get('username') == HARDCODED_ADMIN))
+        channel=channel_name,
+        all_channels=get_all_channels(),
+        is_admin=session.get('is_admin', False))
 
 
-# ── CHANNEL AUTH (password prompt for locked channels) ──
+# ── CHANNEL AUTH ──
 @app.route('/c/<channel_name>/auth', methods=['GET', 'POST'])
+@login_required
 def channel_auth(channel_name):
-    if 'username' not in session:
-        return redirect(url_for('login'))
+    if not re.match(r'^[A-Za-z0-9_-]{1,50}$', channel_name):
+        return redirect(url_for('home'))
+
     ch = get_channel(channel_name)
     if not ch or not ch['password']:
         return redirect(url_for('channel', channel_name=channel_name))
 
     error = None
     if request.method == 'POST':
-        if hash_password(request.form.get('password', '')) == ch['password']:
+        submitted = hash_password(request.form.get('password', ''))
+        if safe_compare(submitted, ch['password']):
             acc = session.get('channel_access', {})
             acc[channel_name] = True
             session['channel_access'] = acc
@@ -185,25 +285,31 @@ def channel_auth(channel_name):
         channels=get_all_channels())
 
 
-# ── ADMIN PANEL (ashrafulishti only) ──
+# ── ADMIN PANEL ──
 @app.route('/admin', methods=['GET', 'POST'])
+@admin_required
 def admin():
-    if session.get('username') != HARDCODED_ADMIN:
-        return redirect(url_for('home'))
-
     msg = None
 
     if request.method == 'POST':
-        action = request.form.get('action')
-        target_ch = request.form.get('channel', 'secret')
+        action    = request.form.get('action')
+        target_ch = request.form.get('channel', '').strip()
 
-        if action == 'add_admin':
+        if not get_channel(target_ch):
+            msg = 'Channel not found.'
+        elif action == 'add_admin':
             new_user = request.form.get('username', '').strip()
-            if new_user:
+            err = validate_username(new_user) if new_user else 'No username provided.'
+            if err:
+                msg = err
+            else:
                 conn = get_db()
                 try:
                     with conn.cursor() as cur:
-                        cur.execute('INSERT INTO channel_admins (channel, username) VALUES (%s,%s) ON CONFLICT DO NOTHING', (target_ch, new_user))
+                        cur.execute(
+                            'INSERT INTO channel_admins (channel, username) VALUES (%s,%s) ON CONFLICT DO NOTHING',
+                            (target_ch, new_user)
+                        )
                     conn.commit()
                     msg = f'Added {new_user} to #{target_ch}'
                 except Exception as e:
@@ -217,7 +323,10 @@ def admin():
                 conn = get_db()
                 try:
                     with conn.cursor() as cur:
-                        cur.execute('DELETE FROM channel_admins WHERE channel=%s AND username=%s', (target_ch, rem_user))
+                        cur.execute(
+                            'DELETE FROM channel_admins WHERE channel=%s AND username=%s',
+                            (target_ch, rem_user)
+                        )
                     conn.commit()
                     msg = f'Removed {rem_user} from #{target_ch}'
                 except Exception as e:
@@ -227,11 +336,17 @@ def admin():
 
         elif action == 'change_password':
             new_pw = request.form.get('new_password', '').strip()
-            if new_pw:
+            err = validate_password(new_pw) if new_pw else 'No password provided.'
+            if err:
+                msg = err
+            else:
                 conn = get_db()
                 try:
                     with conn.cursor() as cur:
-                        cur.execute('UPDATE channels SET password=%s WHERE name=%s', (hash_password(new_pw), target_ch))
+                        cur.execute(
+                            'UPDATE channels SET password=%s WHERE name=%s',
+                            (hash_password(new_pw), target_ch)
+                        )
                     conn.commit()
                     msg = f'Password updated for #{target_ch}'
                 except Exception as e:
@@ -251,40 +366,92 @@ def admin():
             finally:
                 release_db(conn)
 
-    # Gather data for all locked channels
+        elif action == 'grant_admin':
+            target_user = request.form.get('username', '').strip()
+            err = validate_username(target_user) if target_user else 'No username provided.'
+            if err:
+                msg = err
+            else:
+                conn = get_db()
+                try:
+                    with conn.cursor() as cur:
+                        cur.execute('UPDATE users SET is_admin=TRUE WHERE username=%s', (target_user,))
+                        if cur.rowcount == 0:
+                            msg = f'User {target_user} not found.'
+                        else:
+                            conn.commit()
+                            msg = f'{target_user} granted site admin.'
+                except Exception as e:
+                    conn.rollback(); msg = str(e)
+                finally:
+                    release_db(conn)
+
+        elif action == 'revoke_admin':
+            target_user = request.form.get('username', '').strip()
+            # Prevent self-revoke
+            if target_user == session.get('username'):
+                msg = 'You cannot revoke your own admin access.'
+            elif target_user:
+                conn = get_db()
+                try:
+                    with conn.cursor() as cur:
+                        cur.execute('UPDATE users SET is_admin=FALSE WHERE username=%s', (target_user,))
+                    conn.commit()
+                    msg = f'{target_user} admin access revoked.'
+                except Exception as e:
+                    conn.rollback(); msg = str(e)
+                finally:
+                    release_db(conn)
+
     all_channels = get_all_channels()
     locked = [c for c in all_channels if c['locked']]
     admins_by_channel = {c['name']: get_channel_admins(c['name']) for c in locked}
+
+    # Get all site admins
+    conn = get_db()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute('SELECT username FROM users WHERE is_admin=TRUE ORDER BY username')
+            site_admins = [r['username'] for r in cur.fetchall()]
+    finally:
+        release_db(conn)
 
     return render_template('admin.html',
         all_channels=all_channels,
         locked=locked,
         admins_by_channel=admins_by_channel,
+        site_admins=site_admins,
+        current_user=session.get('username'),
         msg=msg)
 
 
 # ── POLL ──
 @app.route('/poll')
+@login_required
 def poll():
-    if 'username' not in session:
-        return jsonify({'error': 'unauthorized'}), 401
     channel_name = request.args.get('channel', DEFAULT_CHANNEL)
+    if not re.match(r'^[A-Za-z0-9_-]{1,50}$', channel_name):
+        return jsonify({'messages': []})
+
     ch = get_channel(channel_name)
     if not ch:
         return jsonify({'messages': []})
     if not has_channel_access(channel_name, ch):
         return jsonify({'error': 'forbidden'}), 403
+
     since_id = request.args.get('since', 0, type=int)
     conn = get_db()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
-                'SELECT id, username, content, created_at FROM posts WHERE id>%s AND channel=%s ORDER BY id ASC LIMIT 30',
+                'SELECT id, username, content, created_at FROM posts '
+                'WHERE id>%s AND channel=%s ORDER BY id ASC LIMIT 30',
                 (since_id, channel_name)
             )
             rows = cur.fetchall()
     finally:
         release_db(conn)
+
     return jsonify({'messages': [{
         'id': r['id'],
         'username': r['username'],
@@ -295,21 +462,27 @@ def poll():
 
 # ── POST ──
 @app.route('/post', methods=['POST'])
+@login_required
 def add_post():
-    if 'username' not in session:
-        return redirect(url_for('login'))
-    content = request.form.get('content', '').strip()
+    content      = request.form.get('content', '').strip()
     channel_name = request.form.get('channel', DEFAULT_CHANNEL)
+
+    if not re.match(r'^[A-Za-z0-9_-]{1,50}$', channel_name):
+        return redirect(url_for('home'))
+
     ch = get_channel(channel_name)
     if not ch or not has_channel_access(channel_name, ch):
         return redirect(url_for('channel_auth', channel_name=channel_name))
     if not content or len(content) > 500:
         return redirect(url_for('channel', channel_name=channel_name))
+
     conn = get_db()
     try:
         with conn.cursor() as cur:
-            cur.execute('INSERT INTO posts (username, content, channel) VALUES (%s,%s,%s)',
-                        (session['username'], content, channel_name))
+            cur.execute(
+                'INSERT INTO posts (username, content, channel) VALUES (%s,%s,%s)',
+                (session['username'], content, channel_name)
+            )
         conn.commit()
     except Exception:
         conn.rollback(); raise
@@ -320,6 +493,7 @@ def add_post():
 
 # ── LOGIN ──
 @app.route('/login', methods=['GET', 'POST'])
+@rate_limited(max_calls=10, window=60)
 def login():
     if request.method == 'POST':
         user = request.form.get('username', '').strip()
@@ -327,31 +501,42 @@ def login():
         conn = get_db()
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute('SELECT username FROM users WHERE username=%s AND password=%s',
-                            (user, hash_password(pwd)))
+                cur.execute('SELECT username, password, is_admin FROM users WHERE username=%s', (user,))
                 row = cur.fetchone()
         finally:
             release_db(conn)
-        if row:
-            session['username'] = user
+
+        stored_hash = row['password'] if row else 'x' * 64
+        if row and safe_compare(hash_password(pwd), stored_hash):
+            session.clear()
+            session['username'] = row['username']
+            session['is_admin'] = bool(row['is_admin'])
+            session.permanent = True
             return redirect(url_for('home'))
+
         return render_template('login.html', error='Invalid credentials.')
     return render_template('login.html', error=None)
 
 
 # ── REGISTER ──
 @app.route('/register', methods=['GET', 'POST'])
+@rate_limited(max_calls=5, window=60)
 def register():
     if request.method == 'POST':
         user = request.form.get('username', '').strip()
         pwd  = request.form.get('password', '')
-        if not user or not pwd:
-            return render_template('register.html', error='Fill in all fields.')
+
+        err = validate_username(user) or validate_password(pwd)
+        if err:
+            return render_template('register.html', error=err)
+
         conn = get_db()
         try:
             with conn.cursor() as cur:
-                cur.execute('INSERT INTO users (username, password) VALUES (%s,%s)',
-                            (user, hash_password(pwd)))
+                cur.execute(
+                    'INSERT INTO users (username, password) VALUES (%s,%s)',
+                    (user, hash_password(pwd))
+                )
             conn.commit()
             return redirect(url_for('login'))
         except IntegrityError:
@@ -369,6 +554,12 @@ def register():
 def logout():
     session.clear()
     return redirect(url_for('login'))
+
+
+# ── Error handlers ──
+@app.errorhandler(403)
+def forbidden(e):
+    return render_template('login.html', error='Access denied.'), 403
 
 
 if __name__ == '__main__':
