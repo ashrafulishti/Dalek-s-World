@@ -3,7 +3,7 @@ services:
     name: dalek-social
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --timeout 120
 
     # a specialized code only for render hosting.It tells render specific things to do 
     # that will help run the code properly. we really don't nee it if you want to setup render manually or host the app
