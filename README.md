@@ -6,4 +6,4 @@ Features :
 - live polling
 - admin panel
 - session-based auth
-Go to **wiki** section for mor info.
+Go to **wiki** section for more info.
