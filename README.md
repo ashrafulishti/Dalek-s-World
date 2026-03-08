@@ -1,7 +1,7 @@
-# DALEKS — Real-Time Chat Web App
+# Project DALEK'S WORLD
 
-> A Discord-style group chat application built with Python (Flask) and PostgreSQL.  
-> Features channels, locked rooms, live polling, an admin panel, and session-based auth.  
+> A very simple group chat application built with Python (Flask) and PostgreSQL.  
+> Features : channels, locked rooms, live polling, an admin panel, and session-based auth.  
 > Built by **ashrafulishti**.
 
 ---
@@ -26,12 +26,12 @@
 
 ## What Is This?
 
-DALEKS is a lightweight real-time group chat app. It looks and feels similar to Discord — with a server rail, channel sidebar, message feed, and a composer. It runs entirely on Python (Flask) on the backend and plain HTML/CSS/JavaScript on the frontend. There is no WebSocket — messages are delivered via polling every 2.5 seconds, which keeps the stack simple and hosting costs at zero.
+DALEK'S WORLD is a simple and lightweight real-time group chat app. It looks and feels similar to Discord , with a server rail, channel sidebar, message feed, and a composer. It runs entirely on Python (Flask) on the backend and plain HTML/CSS/JavaScript on the frontend. There is no WebSocket and messages are delivered via polling every 2.5 seconds, which keeps the stack simple and hosting costs at zero.
 
 It is designed to be hosted for free using:
 - **Render** — for the Python web server
 - **Neon** — for the PostgreSQL database
-
+but you can always tweak the code and host it locally or in any other platform.
 ---
 
 ## Feature Overview
@@ -42,6 +42,8 @@ It is designed to be hosted for free using:
 - `#secret` is password-locked — users must enter a channel password to gain access
 - Channel access is stored in the session, so you only need to enter the password once per login
 - Locked channels show a 🔒 icon in the sidebar
+
+You can always add new channels and lock them by tweaking the code your way.
 
 ### Messaging
 - Messages are paginated — 15 per page, newest first
@@ -463,4 +465,4 @@ Full list in `requirements.txt`.
 
 ---
 
-*DALEKS — built by ashrafulishti*
+*DALEK'S WORLD — built by ashrafulishti*
