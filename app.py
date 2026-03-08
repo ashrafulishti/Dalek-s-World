@@ -562,7 +562,8 @@ def forbidden(e):
     return render_template('login.html', error='Access denied.'), 403
 
 
+migrate_db()  # runs always, whether gunicorn or direct
+
 if __name__ == '__main__':
-    migrate_db()
     port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port)
