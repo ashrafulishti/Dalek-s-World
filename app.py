@@ -61,7 +61,7 @@ USERNAME_RE = re.compile(r'^[A-Za-z0-9_]{3,32}$')
 
 def validate_username(u: str) -> str | None:
     if not USERNAME_RE.match(u):
-        return 'Username must be 3–32 chars: letters, numbers, underscores only.'
+        return 'Username must be 3-32 chars: letters, numbers, underscores only.'
     return None
 
 def validate_password(p: str) -> str | None:
@@ -101,11 +101,28 @@ def migrate_db():
     conn = get_db()
     try:
         with conn.cursor() as cur:
-            # posts table
-            cur.execute("ALTER TABLE posts ADD COLUMN IF NOT EXISTS channel VARCHAR(50) DEFAULT 'general'")
 
-            # users: add is_admin column
-            cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE")
+            # users table — created first, everything depends on it
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id         SERIAL PRIMARY KEY,
+                    username   VARCHAR(100) UNIQUE NOT NULL,
+                    password   VARCHAR(64) NOT NULL,
+                    is_admin   BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMP DEFAULT NOW()
+                )
+            """)
+
+            # posts table
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS posts (
+                    id         SERIAL PRIMARY KEY,
+                    username   VARCHAR(100) NOT NULL,
+                    content    TEXT NOT NULL,
+                    channel    VARCHAR(50) DEFAULT 'general',
+                    created_at TIMESTAMP DEFAULT NOW()
+                )
+            """)
 
             # channels table
             cur.execute("""
@@ -128,6 +145,10 @@ def migrate_db():
                 )
             """)
 
+            # Safe ALTERs for existing deployments with old schema
+            cur.execute("ALTER TABLE posts ADD COLUMN IF NOT EXISTS channel VARCHAR(50) DEFAULT 'general'")
+            cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE")
+
             # Seed default channels
             for ch, pw in [('general', None), ('fun', None), ('secret', hash_password('changeme'))]:
                 cur.execute("""
@@ -137,6 +158,7 @@ def migrate_db():
                 """, (ch, pw))
 
         conn.commit()
+        print("Database ready.")
     except Exception as e:
         conn.rollback()
         print(f"Migration error: {e}")
@@ -295,76 +317,77 @@ def admin():
         action    = request.form.get('action')
         target_ch = request.form.get('channel', '').strip()
 
-        if not get_channel(target_ch):
-            msg = 'Channel not found.'
-        elif action == 'add_admin':
-            new_user = request.form.get('username', '').strip()
-            err = validate_username(new_user) if new_user else 'No username provided.'
-            if err:
-                msg = err
-            else:
+        if action in ('add_admin', 'remove_admin', 'change_password', 'remove_password'):
+            if not get_channel(target_ch):
+                msg = 'Channel not found.'
+            elif action == 'add_admin':
+                new_user = request.form.get('username', '').strip()
+                err = validate_username(new_user) if new_user else 'No username provided.'
+                if err:
+                    msg = err
+                else:
+                    conn = get_db()
+                    try:
+                        with conn.cursor() as cur:
+                            cur.execute(
+                                'INSERT INTO channel_admins (channel, username) VALUES (%s,%s) ON CONFLICT DO NOTHING',
+                                (target_ch, new_user)
+                            )
+                        conn.commit()
+                        msg = f'Added {new_user} to #{target_ch}'
+                    except Exception as e:
+                        conn.rollback(); msg = str(e)
+                    finally:
+                        release_db(conn)
+
+            elif action == 'remove_admin':
+                rem_user = request.form.get('username', '').strip()
+                if rem_user:
+                    conn = get_db()
+                    try:
+                        with conn.cursor() as cur:
+                            cur.execute(
+                                'DELETE FROM channel_admins WHERE channel=%s AND username=%s',
+                                (target_ch, rem_user)
+                            )
+                        conn.commit()
+                        msg = f'Removed {rem_user} from #{target_ch}'
+                    except Exception as e:
+                        conn.rollback(); msg = str(e)
+                    finally:
+                        release_db(conn)
+
+            elif action == 'change_password':
+                new_pw = request.form.get('new_password', '').strip()
+                err = validate_password(new_pw) if new_pw else 'No password provided.'
+                if err:
+                    msg = err
+                else:
+                    conn = get_db()
+                    try:
+                        with conn.cursor() as cur:
+                            cur.execute(
+                                'UPDATE channels SET password=%s WHERE name=%s',
+                                (hash_password(new_pw), target_ch)
+                            )
+                        conn.commit()
+                        msg = f'Password updated for #{target_ch}'
+                    except Exception as e:
+                        conn.rollback(); msg = str(e)
+                    finally:
+                        release_db(conn)
+
+            elif action == 'remove_password':
                 conn = get_db()
                 try:
                     with conn.cursor() as cur:
-                        cur.execute(
-                            'INSERT INTO channel_admins (channel, username) VALUES (%s,%s) ON CONFLICT DO NOTHING',
-                            (target_ch, new_user)
-                        )
+                        cur.execute('UPDATE channels SET password=NULL WHERE name=%s', (target_ch,))
                     conn.commit()
-                    msg = f'Added {new_user} to #{target_ch}'
+                    msg = f'#{target_ch} is now public'
                 except Exception as e:
                     conn.rollback(); msg = str(e)
                 finally:
                     release_db(conn)
-
-        elif action == 'remove_admin':
-            rem_user = request.form.get('username', '').strip()
-            if rem_user:
-                conn = get_db()
-                try:
-                    with conn.cursor() as cur:
-                        cur.execute(
-                            'DELETE FROM channel_admins WHERE channel=%s AND username=%s',
-                            (target_ch, rem_user)
-                        )
-                    conn.commit()
-                    msg = f'Removed {rem_user} from #{target_ch}'
-                except Exception as e:
-                    conn.rollback(); msg = str(e)
-                finally:
-                    release_db(conn)
-
-        elif action == 'change_password':
-            new_pw = request.form.get('new_password', '').strip()
-            err = validate_password(new_pw) if new_pw else 'No password provided.'
-            if err:
-                msg = err
-            else:
-                conn = get_db()
-                try:
-                    with conn.cursor() as cur:
-                        cur.execute(
-                            'UPDATE channels SET password=%s WHERE name=%s',
-                            (hash_password(new_pw), target_ch)
-                        )
-                    conn.commit()
-                    msg = f'Password updated for #{target_ch}'
-                except Exception as e:
-                    conn.rollback(); msg = str(e)
-                finally:
-                    release_db(conn)
-
-        elif action == 'remove_password':
-            conn = get_db()
-            try:
-                with conn.cursor() as cur:
-                    cur.execute('UPDATE channels SET password=NULL WHERE name=%s', (target_ch,))
-                conn.commit()
-                msg = f'#{target_ch} is now public'
-            except Exception as e:
-                conn.rollback(); msg = str(e)
-            finally:
-                release_db(conn)
 
         elif action == 'grant_admin':
             target_user = request.form.get('username', '').strip()
@@ -377,7 +400,7 @@ def admin():
                     with conn.cursor() as cur:
                         cur.execute('UPDATE users SET is_admin=TRUE WHERE username=%s', (target_user,))
                         if cur.rowcount == 0:
-                            msg = f'User {target_user} not found.'
+                            msg = f'User "{target_user}" not found.'
                         else:
                             conn.commit()
                             msg = f'{target_user} granted site admin.'
@@ -388,7 +411,6 @@ def admin():
 
         elif action == 'revoke_admin':
             target_user = request.form.get('username', '').strip()
-            # Prevent self-revoke
             if target_user == session.get('username'):
                 msg = 'You cannot revoke your own admin access.'
             elif target_user:
@@ -407,7 +429,6 @@ def admin():
     locked = [c for c in all_channels if c['locked']]
     admins_by_channel = {c['name']: get_channel_admins(c['name']) for c in locked}
 
-    # Get all site admins
     conn = get_db()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -562,7 +583,8 @@ def forbidden(e):
     return render_template('login.html', error='Access denied.'), 403
 
 
-migrate_db()  # runs always, whether gunicorn or direct
+# ── Runs at startup under both gunicorn and direct python ──
+migrate_db()
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
