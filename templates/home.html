@@ -3,271 +3,379 @@
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>DALEKS — #{{ channel }}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-tertiary:  #0d1a0d;
-            --bg-secondary: #111f11;
-            --bg-primary:   #162016;
-            --bg-float:     #1a2a1a;
-            --bg-hover:     rgba(0,0,0,0.08);
-            --channelbar:   #0f1a0f;
-            --green-1:      #3ba55c;
-            --green-bright: #57f287;
-            --green-muted:  #1e4d2b;
-            --text:         #dcf0dc;
-            --text-muted:   #5e8a5e;
-            --text-mid:     #8fbf8f;
-            --border:       rgba(255,255,255,0.05);
-            --a0:#57f287; --a1:#3ba55c; --a2:#43b581;
-            --a3:#f0a;    --a4:#fa0;    --a5:#0af;
-            --a6:#f55;    --a7:#a78bfa;
-        }
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        html, body { height: 100%; height: 100dvh; overflow: hidden; background: var(--bg-tertiary); color: var(--text); font-family: 'Noto Sans', 'Segoe UI', sans-serif; font-size: 15px; -webkit-font-smoothing: antialiased; }
+            --bg-base:      #0b0f0b;
+            --bg-mid:       #0f160f;
+            --bg-surface:   #141f14;
+            --bg-raised:    #182018;
+            --bg-hover:     rgba(255,255,255,0.03);
+            --sidebar-bg:   #0d140d;
+            --rail-bg:      #090d09;
 
+            --green:        #4ade80;
+            --green-dim:    #22c55e;
+            --green-dark:   #16a34a;
+            --green-muted:  #166534;
+            --green-faint:  rgba(74,222,128,0.07);
+
+            --text:         #e2f0e2;
+            --text-mid:     #7da87d;
+            --text-muted:   #3d6b3d;
+            --border:       rgba(255,255,255,0.06);
+            --border-mid:   rgba(74,222,128,0.12);
+
+            /* avatar palette */
+            --av0:#1a5c34; --av1:#1a4e8c; --av2:#6b21a8;
+            --av3:#92400e; --av4:#881337; --av5:#065f46;
+            --av6:#1e3a5f; --av7:#4a1942;
+
+            /* username palette */
+            --un0:#4ade80; --un1:#60a5fa; --un2:#c084fc;
+            --un3:#fb923c; --un4:#f87171; --un5:#34d399;
+            --un6:#38bdf8; --un7:#e879f9;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
+            height: 100%; height: 100dvh;
+            overflow: hidden;
+            background: var(--bg-base);
+            color: var(--text);
+            font-family: 'Inter', system-ui, sans-serif;
+            font-size: 14px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ════════════════════════════════
+           APP SHELL
+        ════════════════════════════════ */
         .app { display: flex; height: 100dvh; overflow: hidden; }
 
-        /* ── Server Rail ── */
-        .server-rail {
-            width: 72px; flex-shrink: 0;
-            background: var(--bg-tertiary);
-            display: flex; flex-direction: column; align-items: center;
-            padding: 12px 0; gap: 8px; overflow-y: auto; overflow-x: hidden;
+        /* ── Rail ── */
+        .rail {
+            width: 68px; flex-shrink: 0;
+            background: var(--rail-bg);
+            display: flex; flex-direction: column;
+            align-items: center; padding: 10px 0; gap: 6px;
+            overflow-y: auto; overflow-x: hidden;
+            border-right: 1px solid var(--border);
         }
-        .server-rail::-webkit-scrollbar { display: none; }
-        .server-icon {
-            width: 48px; height: 48px; border-radius: 50%;
-            background: var(--bg-secondary);
+        .rail::-webkit-scrollbar { display: none; }
+
+        .rail-icon {
+            width: 46px; height: 46px; border-radius: 50%;
+            background: var(--bg-surface);
             display: flex; align-items: center; justify-content: center;
-            font-size: 20px; cursor: pointer; position: relative;
-            flex-shrink: 0; color: var(--text-mid);
-            transition: border-radius .15s, background .15s;
+            font-size: 19px; cursor: pointer; flex-shrink: 0;
+            color: var(--text-mid); position: relative;
+            transition: border-radius .2s, background .15s, color .15s;
         }
-        .server-icon:hover, .server-icon.active { border-radius: 30%; background: var(--green-1); color: #fff; }
-        .server-icon.active::before {
-            content: ''; position: absolute; left: -16px; top: 50%;
+        .rail-icon:hover  { border-radius: 30%; background: var(--green-dark); color: #fff; }
+        .rail-icon.active { border-radius: 30%; background: var(--green-dim);  color: #fff; }
+        .rail-icon.active::before {
+            content: ''; position: absolute; left: -10px; top: 50%;
             transform: translateY(-50%);
-            width: 4px; height: 40px; border-radius: 0 4px 4px 0;
-            background: var(--green-bright);
+            width: 3px; height: 36px; border-radius: 0 3px 3px 0;
+            background: var(--green);
         }
-        .rail-sep { width: 32px; height: 2px; background: var(--bg-secondary); border-radius: 1px; flex-shrink: 0; }
+        .rail-sep {
+            width: 28px; height: 1px;
+            background: var(--border-mid); border-radius: 1px; flex-shrink: 0;
+            margin: 2px 0;
+        }
 
         /* ── Sidebar ── */
-        .sidebar { width: 240px; flex-shrink: 0; background: var(--bg-secondary); display: flex; flex-direction: column; overflow: hidden; }
+        .sidebar {
+            width: 236px; flex-shrink: 0;
+            background: var(--sidebar-bg);
+            display: flex; flex-direction: column;
+            overflow: hidden;
+            border-right: 1px solid var(--border);
+        }
+
         .server-header {
-            height: 48px; padding: 0 16px;
+            height: 48px; padding: 0 14px;
             display: flex; align-items: center; justify-content: space-between;
-            border-bottom: 1px solid var(--border); cursor: pointer; flex-shrink: 0;
-            transition: background .1s;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer; flex-shrink: 0;
+            transition: background .12s;
         }
-        .server-header:hover { background: var(--bg-float); }
-        .server-header-name { font-weight: 700; font-size: 15px; color: #fff; }
+        .server-header:hover { background: var(--bg-hover); }
+        .server-name { font-weight: 700; font-size: 15px; color: #fff; letter-spacing: 0.02em; }
 
-        .ch-section { padding: 16px 8px 4px; flex-shrink: 0; }
-        .ch-section-label {
-            font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
-            color: var(--text-muted); text-transform: uppercase;
-            padding: 0 8px; margin-bottom: 4px;
+        .sidebar-scroll { flex: 1; overflow-y: auto; padding: 8px 6px 4px; }
+        .sidebar-scroll::-webkit-scrollbar { width: 3px; }
+        .sidebar-scroll::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 2px; }
+
+        .ch-group { margin-bottom: 4px; }
+        .ch-group-label {
+            font-size: 10.5px; font-weight: 700;
+            letter-spacing: 0.06em; text-transform: uppercase;
+            color: var(--text-muted); padding: 8px 8px 4px;
         }
+
         .ch-item {
-            display: flex; align-items: center; gap: 6px;
-            padding: 6px 8px; border-radius: 4px; cursor: pointer;
-            color: var(--text-muted); font-size: 15px; font-weight: 500;
-            transition: background .1s, color .1s; user-select: none;
-            text-decoration: none;
+            display: flex; align-items: center; gap: 7px;
+            padding: 5px 8px; border-radius: 5px; cursor: pointer;
+            color: var(--text-muted); font-size: 14px; font-weight: 500;
+            text-decoration: none; transition: background .1s, color .1s;
+            user-select: none;
         }
-        .ch-item:hover { background: var(--bg-float); color: var(--text); }
-        .ch-item.active { background: var(--green-muted); color: #fff; }
-        .ch-hash { font-size: 18px; opacity: 0.6; flex-shrink: 0; }
-        .ch-item.active .ch-hash { opacity: 1; }
-        .ch-lock { font-size: 12px; margin-left: auto; opacity: 0.5; }
+        .ch-item:hover  { background: var(--bg-raised); color: var(--text); }
+        .ch-item.active { background: var(--green-faint); color: var(--text); }
+        .ch-item.active .ch-hash { color: var(--green-dim); }
 
-        /* Sidebar scrollable channels area */
-        .sidebar-channels { flex: 1; overflow-y: auto; }
-        .sidebar-channels::-webkit-scrollbar { width: 3px; }
-        .sidebar-channels::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.3); }
+        .ch-hash { font-size: 16px; opacity: 0.55; flex-shrink: 0; line-height: 1; }
+        .ch-item.active .ch-hash { opacity: 1; }
+        .ch-lock { font-size: 10px; margin-left: auto; opacity: 0.45; }
 
         /* User panel */
         .user-panel {
-            padding: 8px; background: var(--channelbar);
+            padding: 7px 8px;
+            background: var(--rail-bg);
+            border-top: 1px solid var(--border);
             display: flex; align-items: center; gap: 8px; flex-shrink: 0;
         }
-        .up-avatar {
+        .up-av {
             width: 32px; height: 32px; border-radius: 50%;
-            background: var(--green-1);
             display: flex; align-items: center; justify-content: center;
-            font-size: 12px; font-weight: 700; color: #fff;
+            font-size: 11px; font-weight: 700; color: #fff;
             flex-shrink: 0; position: relative; cursor: pointer;
+            background: var(--green-dark);
         }
-        .up-avatar::after {
+        .up-av::after {
             content: ''; position: absolute; bottom: -1px; right: -1px;
-            width: 10px; height: 10px; border-radius: 50%;
-            background: var(--green-bright); border: 2px solid var(--channelbar);
+            width: 9px; height: 9px; border-radius: 50%;
+            background: var(--green); border: 2px solid var(--rail-bg);
         }
         .up-info { flex: 1; min-width: 0; }
         .up-name { font-size: 13px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .up-tag  { font-size: 11px; color: var(--text-muted); }
-        .up-actions { display: flex; gap: 2px; }
+        .up-status { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+        .up-actions { display: flex; gap: 1px; }
         .up-btn {
-            width: 30px; height: 30px; border-radius: 4px;
-            background: transparent; border: none; color: var(--text-mid);
+            width: 28px; height: 28px; border-radius: 4px;
+            background: transparent; border: none;
+            color: var(--text-muted); font-size: 14px;
             display: flex; align-items: center; justify-content: center;
-            cursor: pointer; font-size: 15px; transition: all .1s;
-            text-decoration: none;
+            cursor: pointer; text-decoration: none; transition: all .1s;
         }
-        .up-btn:hover { background: var(--bg-float); color: var(--text); }
+        .up-btn:hover { background: var(--bg-raised); color: var(--text); }
 
-        /* ── Main ── */
-        .main { flex: 1; display: flex; flex-direction: column; background: var(--bg-primary); overflow: hidden; }
+        /* ════════════════════════════════
+           MAIN CHAT
+        ════════════════════════════════ */
+        .main { flex: 1; display: flex; flex-direction: column; background: var(--bg-mid); overflow: hidden; min-width: 0; }
 
-        .ch-topbar {
+        .topbar {
             height: 48px; flex-shrink: 0;
             display: flex; align-items: center;
             padding: 0 16px; gap: 10px;
             border-bottom: 1px solid var(--border);
-            box-shadow: 0 1px 0 rgba(0,0,0,0.2);
+            background: var(--bg-mid);
         }
-        .topbar-hash { font-size: 22px; color: var(--text-muted); line-height: 1; }
-        .topbar-name { font-size: 15px; font-weight: 600; color: #fff; }
-        .topbar-sep  { width: 1px; height: 22px; background: var(--border); flex-shrink: 0; }
-        .topbar-topic { font-size: 13px; color: var(--text-muted); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .topbar-actions { margin-left: auto; display: flex; gap: 4px; }
+        .topbar-hash { font-size: 20px; color: var(--text-muted); line-height: 1; flex-shrink: 0; }
+        .topbar-name { font-size: 15px; font-weight: 700; color: #fff; flex-shrink: 0; }
+        .topbar-div  { width: 1px; height: 20px; background: var(--border-mid); flex-shrink: 0; }
+        .topbar-topic {
+            font-size: 13px; color: var(--text-muted);
+            flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .topbar-right { margin-left: auto; display: flex; gap: 3px; flex-shrink: 0; }
         .topbar-btn {
-            width: 32px; height: 32px; border-radius: 4px;
+            width: 32px; height: 32px; border-radius: 5px;
             background: transparent; border: none;
-            color: var(--text-mid); font-size: 17px;
+            color: var(--text-muted); font-size: 16px;
             display: flex; align-items: center; justify-content: center;
-            cursor: pointer; text-decoration: none; transition: all .1s;
+            cursor: pointer; text-decoration: none; transition: all .12s;
         }
-        .topbar-btn:hover { background: var(--bg-float); color: var(--text); }
+        .topbar-btn:hover { background: var(--bg-raised); color: var(--text); }
 
         /* ── Feed ── */
-        .feed { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 16px 0 8px; display: flex; flex-direction: column; }
-        .feed::-webkit-scrollbar { width: 6px; }
-        .feed::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.3); border-radius: 3px; }
-
-        .sys-msg {
-            display: flex; align-items: center; gap: 12px;
-            padding: 8px 16px; color: var(--text-muted); font-size: 12px;
+        .feed {
+            flex: 1; overflow-y: auto; overflow-x: hidden;
+            padding: 16px 0 4px;
+            display: flex; flex-direction: column;
         }
-        .sys-msg::before, .sys-msg::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+        .feed::-webkit-scrollbar { width: 5px; }
+        .feed::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 3px; }
+
+        .day-divider {
+            display: flex; align-items: center; gap: 10px;
+            padding: 12px 16px; color: var(--text-muted);
+            font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+        }
+        .day-divider::before, .day-divider::after {
+            content: ''; flex: 1; height: 1px; background: var(--border);
+        }
 
         .msg-group {
-            padding: 2px 16px; display: flex; gap: 16px;
-            animation: msgIn .15s ease-out;
+            padding: 2px 16px 2px;
+            display: flex; gap: 14px;
+            animation: fadeUp .15s ease-out;
         }
-        @keyframes msgIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(5px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
         .msg-group:hover { background: var(--bg-hover); }
 
-        .msg-av-col { width: 40px; flex-shrink: 0; padding-top: 2px; display: flex; justify-content: center; }
-        .msg-av {
+        .av-col { width: 40px; flex-shrink: 0; padding-top: 2px; display: flex; justify-content: center; }
+        .av {
             width: 40px; height: 40px; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
-            font-weight: 700; font-size: 15px; color: #fff;
-            cursor: pointer; transition: opacity .1s;
+            font-size: 14px; font-weight: 700; color: #fff;
+            cursor: pointer; flex-shrink: 0;
+            transition: opacity .1s; background: var(--av0);
         }
-        .msg-av:hover { opacity: 0.85; }
+        .av:hover { opacity: 0.85; }
+
         .compact-ts {
             font-size: 10px; color: var(--text-muted); opacity: 0;
             line-height: 22px; width: 40px; text-align: right;
-            transition: opacity .1s; padding-top: 3px; white-space: nowrap;
+            padding-top: 3px; white-space: nowrap;
+            transition: opacity .1s;
         }
         .msg-group:hover .compact-ts { opacity: 1; }
 
         .msg-body { flex: 1; min-width: 0; }
-        .msg-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; }
-        .msg-user { font-size: 15px; font-weight: 600; cursor: pointer; }
+        .msg-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 3px; }
+        .msg-user {
+            font-size: 14px; font-weight: 600; cursor: pointer;
+            color: var(--un0);
+        }
         .msg-user:hover { text-decoration: underline; }
         .msg-time { font-size: 11px; color: var(--text-muted); }
-        .msg-text { font-size: 15px; color: var(--text); line-height: 1.375; word-break: break-word; white-space: pre-wrap; }
+        .msg-text {
+            font-size: 14px; color: var(--text);
+            line-height: 1.45; word-break: break-word; white-space: pre-wrap;
+        }
 
-        /* Avatar bg colors */
-        .av-0{background:#1e6e3e} .av-1{background:#1a5c34} .av-2{background:#1d6b3b}
-        .av-3{background:#7b2fab} .av-4{background:#c87941} .av-5{background:#1a6ea6}
-        .av-6{background:#a32b2b} .av-7{background:#5b3fa6}
-        /* Username colors */
-        .un-0{color:var(--a0)} .un-1{color:var(--a1)} .un-2{color:var(--a2)}
-        .un-3{color:var(--a3)} .un-4{color:var(--a4)} .un-5{color:var(--a5)}
-        .un-6{color:var(--a6)} .un-7{color:var(--a7)}
+        /* av & username color classes */
+        .av-0{background:var(--av0)} .av-1{background:var(--av1)} .av-2{background:var(--av2)}
+        .av-3{background:var(--av3)} .av-4{background:var(--av4)} .av-5{background:var(--av5)}
+        .av-6{background:var(--av6)} .av-7{background:var(--av7)}
+        .un-0{color:var(--un0)} .un-1{color:var(--un1)} .un-2{color:var(--un2)}
+        .un-3{color:var(--un3)} .un-4{color:var(--un4)} .un-5{color:var(--un5)}
+        .un-6{color:var(--un6)} .un-7{color:var(--un7)}
 
         /* ── Composer ── */
-        .composer-wrap { flex-shrink: 0; padding: 0 16px 24px; }
+        .composer-wrap { flex-shrink: 0; padding: 8px 16px 20px; }
         .composer {
-            background: var(--bg-float); border-radius: 8px;
-            display: flex; align-items: center; padding: 0 16px; gap: 12px;
-            min-height: 44px; border: 1px solid transparent; transition: border-color .15s;
+            background: var(--bg-raised);
+            border: 1px solid var(--border-mid);
+            border-radius: 9px;
+            display: flex; align-items: center;
+            padding: 0 12px; gap: 10px; min-height: 46px;
+            transition: border-color .15s, box-shadow .15s;
         }
-        .composer:focus-within { border-color: rgba(87,242,135,0.15); }
-        .composer-plus {
-            width: 24px; height: 24px; border-radius: 50%;
-            background: var(--text-muted); display: flex; align-items: center; justify-content: center;
-            font-size: 18px; font-weight: 300; color: var(--bg-primary);
-            cursor: pointer; flex-shrink: 0; user-select: none; transition: background .15s;
+        .composer:focus-within {
+            border-color: rgba(74,222,128,0.3);
+            box-shadow: 0 0 0 3px rgba(74,222,128,0.06);
         }
-        .composer-plus:hover { background: var(--text); }
-        .composer-form { flex: 1; display: flex; align-items: center; gap: 12px; }
-        .composer-form input {
+        .composer-attach {
+            width: 22px; height: 22px; border-radius: 50%;
+            background: var(--text-muted);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 17px; font-weight: 300; color: var(--bg-mid);
+            cursor: pointer; flex-shrink: 0; user-select: none;
+            line-height: 1; transition: background .15s;
+        }
+        .composer-attach:hover { background: var(--text); }
+
+        .composer-form { flex: 1; display: flex; align-items: center; gap: 10px; min-width: 0; }
+        .composer-input {
             flex: 1; background: transparent; border: none; outline: none;
-            color: var(--text); font-family: inherit; font-size: 15px;
-            caret-color: var(--green-bright); padding: 11px 0;
+            color: var(--text); font-family: inherit; font-size: 14px;
+            caret-color: var(--green); padding: 12px 0; min-width: 0;
         }
-        .composer-form input::placeholder { color: var(--text-muted); }
+        .composer-input::placeholder { color: var(--text-muted); }
+
         .send-btn {
-            width: 32px; height: 32px; border-radius: 6px;
-            background: var(--green-1); border: none; color: #fff;
+            width: 32px; height: 32px; border-radius: 7px;
+            background: var(--green-dark); border: none; color: #fff;
             display: flex; align-items: center; justify-content: center;
             cursor: pointer; flex-shrink: 0; transition: all .15s;
         }
-        .send-btn:hover { background: var(--green-bright); color: #000; }
-        .send-btn:active { transform: scale(.92); }
+        .send-btn:hover  { background: var(--green-dim); box-shadow: 0 0 10px rgba(74,222,128,0.3); }
+        .send-btn:active { transform: scale(.9); }
 
-        /* ── Member List ── */
-        .member-list { width: 240px; flex-shrink: 0; background: var(--bg-secondary); padding: 16px 8px; overflow-y: auto; display: none; }
-        @media (min-width: 900px) { .member-list { display: block; } }
-        .member-list::-webkit-scrollbar { width: 4px; }
-        .member-list::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.3); border-radius: 2px; }
-        .member-section-label { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; color: var(--text-muted); text-transform: uppercase; padding: 16px 8px 4px; }
-        .member-item { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 4px; cursor: pointer; transition: background .1s; }
-        .member-item:hover { background: var(--bg-float); }
-        .member-av { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #fff; flex-shrink: 0; position: relative; }
-        .member-av::after { content: ''; position: absolute; bottom: 0; right: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--green-bright); border: 2px solid var(--bg-secondary); }
-        .member-name { font-size: 14px; font-weight: 500; color: var(--text-mid); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .member-item:hover .member-name { color: var(--text); }
+        /* ── Members panel ── */
+        .members {
+            width: 220px; flex-shrink: 0;
+            background: var(--sidebar-bg);
+            border-left: 1px solid var(--border);
+            padding: 12px 8px; overflow-y: auto;
+            display: none;
+        }
+        @media (min-width: 960px) { .members { display: block; } }
+        .members::-webkit-scrollbar { width: 3px; }
+        .members::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 2px; }
+        .members-label {
+            font-size: 10.5px; font-weight: 700;
+            letter-spacing: 0.06em; text-transform: uppercase;
+            color: var(--text-muted); padding: 6px 8px 6px;
+        }
+        .member-row {
+            display: flex; align-items: center; gap: 9px;
+            padding: 5px 8px; border-radius: 5px; cursor: pointer;
+            transition: background .1s;
+        }
+        .member-row:hover { background: var(--bg-raised); }
+        .member-av {
+            width: 30px; height: 30px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; font-weight: 700; color: #fff;
+            flex-shrink: 0; position: relative;
+        }
+        .member-av::after {
+            content: ''; position: absolute; bottom: 0; right: 0;
+            width: 9px; height: 9px; border-radius: 50%;
+            background: var(--green); border: 2px solid var(--sidebar-bg);
+        }
+        .member-name {
+            font-size: 13px; font-weight: 500; color: var(--text-mid);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .member-row:hover .member-name { color: var(--text); }
 
         /* ── Empty state ── */
-        .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--text-muted); padding: 40px; }
-        .empty-icon  { font-size: 48px; opacity: 0.25; }
-        .empty-title { font-size: 20px; font-weight: 700; color: var(--text); }
-        .empty-sub   { font-size: 14px; text-align: center; }
+        .empty-state {
+            flex: 1; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 10px; color: var(--text-muted); padding: 40px; text-align: center;
+        }
+        .empty-icon  { font-size: 44px; opacity: 0.2; }
+        .empty-title { font-size: 18px; font-weight: 700; color: var(--text-mid); }
+        .empty-sub   { font-size: 13px; }
 
         /* ── Mobile drawer ── */
-        @media (max-width: 700px) {
-            .server-rail { display: none; }
+        @media (max-width: 680px) {
+            .rail { display: none; }
             .sidebar {
-                position: fixed; top: 0; left: 0; bottom: 0;
-                z-index: 200; width: 260px;
-                transform: translateX(-100%);
-                transition: transform 0.22s ease;
-                box-shadow: 4px 0 24px rgba(0,0,0,0.5);
+                position: fixed; top: 0; left: 0; bottom: 0; z-index: 200;
+                width: 256px; transform: translateX(-100%);
+                transition: transform .22s ease;
+                box-shadow: 4px 0 32px rgba(0,0,0,0.6);
             }
             .sidebar.open { transform: translateX(0); }
             .drawer-overlay {
-                display: none;
-                position: fixed; inset: 0; z-index: 199;
-                background: rgba(0,0,0,0.6);
+                display: none; position: fixed; inset: 0; z-index: 199;
+                background: rgba(0,0,0,0.65);
             }
             .drawer-overlay.open { display: block; }
             .hamburger {
                 display: flex; align-items: center; justify-content: center;
-                width: 36px; height: 36px; border-radius: 4px;
+                width: 34px; height: 34px; border-radius: 5px;
                 background: transparent; border: none;
-                color: var(--text-mid); font-size: 20px; cursor: pointer;
-                transition: all .1s; flex-shrink: 0;
+                color: var(--text-muted); font-size: 18px; cursor: pointer;
+                flex-shrink: 0; transition: all .1s;
             }
-            .hamburger:hover { background: var(--bg-float); color: var(--text); }
+            .hamburger:hover { background: var(--bg-raised); color: var(--text); }
         }
-        @media (min-width: 701px) {
+        @media (min-width: 681px) {
             .hamburger { display: none; }
             .drawer-overlay { display: none !important; }
         }
@@ -276,29 +384,30 @@
 <body data-me="{{ session.username }}" data-channel="{{ channel }}">
 <div class="app">
 
-    <!-- SERVER RAIL -->
-    <nav class="server-rail">
-        <div class="server-icon active" title="DALEKS">◈</div>
+    <!-- RAIL -->
+    <nav class="rail">
+        <div class="rail-icon active" title="DALEKS">◈</div>
         <div class="rail-sep"></div>
         <a href="/" style="text-decoration:none;">
-            <div class="server-icon" title="Refresh">↻</div>
+            <div class="rail-icon" title="Refresh">↻</div>
         </a>
     </nav>
 
     <div class="drawer-overlay" id="drawerOverlay"></div>
 
     <!-- SIDEBAR -->
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
         <div class="server-header">
-            <span class="server-header-name">DALEKS</span>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            <span class="server-name">DALEKS</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
 
-        <div class="sidebar-channels">
-            <div class="ch-section">
-                <div class="ch-section-label">Text Channels</div>
+        <div class="sidebar-scroll">
+            <div class="ch-group">
+                <div class="ch-group-label">Text Channels</div>
                 {% for ch in all_channels %}
-                <a href="{{ url_for('channel', channel_name=ch.name) }}" class="ch-item {{ 'active' if ch.name == channel }}">
+                <a href="{{ url_for('channel', channel_name=ch.name) }}"
+                   class="ch-item {{ 'active' if ch.name == channel }}">
                     <span class="ch-hash">#</span>
                     <span>{{ ch.name }}</span>
                     {% if ch.locked %}<span class="ch-lock">🔒</span>{% endif %}
@@ -306,25 +415,24 @@
                 {% endfor %}
             </div>
 
-            <div class="ch-section">
-                <div class="ch-section-label">Pages</div>
+            <div class="ch-group">
+                <div class="ch-group-label">Pages</div>
                 {% if page > 1 %}
                 <a href="{{ url_for('channel', channel_name=channel, page=page-1) }}" class="ch-item">
-                    <span class="ch-hash">‹</span><span>newer</span>
+                    <span class="ch-hash">‹</span><span>Newer</span>
                 </a>
                 {% endif %}
                 <a href="{{ url_for('channel', channel_name=channel, page=page+1) }}" class="ch-item">
-                    <span class="ch-hash">›</span><span>older</span>
+                    <span class="ch-hash">›</span><span>Older</span>
                 </a>
             </div>
         </div>
 
-        <!-- User Panel -->
         <div class="user-panel">
-            <div class="up-avatar" id="selfAvatar">{{ session.username[:2] | upper }}</div>
+            <div class="up-av" id="selfAv">{{ session.username[:2] | upper }}</div>
             <div class="up-info">
                 <div class="up-name">{{ session.username }}</div>
-                <div class="up-tag">online</div>
+                <div class="up-status">● online</div>
             </div>
             <div class="up-actions">
                 {% if is_admin %}
@@ -335,39 +443,37 @@
         </div>
     </aside>
 
-    <!-- MAIN CHAT -->
+    <!-- MAIN -->
     <main class="main">
-        <div class="ch-topbar">
-            <button class="hamburger" id="menuBtn" title="Channels">☰</button>
+        <div class="topbar">
+            <button class="hamburger" id="menuBtn">☰</button>
             <span class="topbar-hash">#</span>
             <span class="topbar-name">{{ channel }}</span>
-            <div class="topbar-sep"></div>
+            <div class="topbar-div"></div>
             <span class="topbar-topic">
                 {% if channel == 'general' %}The main hub · everyone welcome
                 {% elif channel == 'fun' %}Off-topic, memes, good vibes
-                {% elif channel == 'secret' %}🔒 Restricted access channel
+                {% elif channel == 'secret' %}Restricted access channel
                 {% else %}DALEKS · #{{ channel }}
                 {% endif %}
                 · page {{ page }}
             </span>
-            <div class="topbar-actions">
+            <div class="topbar-right">
                 <a href="{{ url_for('channel', channel_name=channel) }}" class="topbar-btn" title="Refresh">↻</a>
-                <a href="{{ url_for('logout') }}" class="topbar-btn" title="Logout" style="font-size:14px;">⏻</a>
+                <a href="{{ url_for('logout') }}" class="topbar-btn" title="Logout" style="font-size:13px;">⏻</a>
             </div>
         </div>
 
-        <div class="feed" id="chatBox">
+        <div class="feed" id="feed">
             {% if posts %}
-                <div class="sys-msg">Welcome to #{{ channel }}</div>
+                <div class="day-divider">Welcome to #{{ channel }}</div>
                 {% for post in posts %}
-                <div class="msg-group first-in-group"
-                     data-user="{{ post['username'] }}"
-                     data-id="{{ post['id'] }}">
-                    <div class="msg-av-col">
-                        <div class="msg-av av-0">{{ post['username'][:2] | upper }}</div>
+                <div class="msg-group" data-user="{{ post['username'] }}" data-id="{{ post['id'] }}">
+                    <div class="av-col">
+                        <div class="av av-0">{{ post['username'][:2] | upper }}</div>
                     </div>
                     <div class="msg-body">
-                        <div class="msg-header">
+                        <div class="msg-head">
                             <span class="msg-user un-0">{{ post['username'] }}</span>
                             <span class="msg-time">{{ post['created_at'] | fmtts }}</span>
                         </div>
@@ -378,21 +484,26 @@
             {% else %}
                 <div class="empty-state">
                     <div class="empty-icon">◈</div>
-                    <div class="empty-title">No messages yet</div>
-                    <div class="empty-sub">Be the first to transmit to #{{ channel }}.</div>
+                    <div class="empty-title">Nothing here yet</div>
+                    <div class="empty-sub">Be the first to send a message to #{{ channel }}.</div>
                 </div>
             {% endif %}
         </div>
 
         <div class="composer-wrap">
             <div class="composer">
-                <div class="composer-plus">+</div>
+                <div class="composer-attach">+</div>
                 <form class="composer-form" action="/post" method="POST">
                     <input type="hidden" name="channel" value="{{ channel }}">
-                    <input name="content" placeholder="Message #{{ channel }}" required autocomplete="off" maxlength="500">
-                    <button type="submit" class="send-btn">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                    <input class="composer-input" name="content"
+                           placeholder="Message #{{ channel }}"
+                           required autocomplete="off" maxlength="500">
+                    <button type="submit" class="send-btn" title="Send">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" stroke-width="2.5"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="22" y1="2" x2="11" y2="13"/>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
                         </svg>
                     </button>
                 </form>
@@ -400,72 +511,60 @@
         </div>
     </main>
 
-    <!-- MEMBER LIST -->
-    <aside class="member-list" id="memberList">
-        <div class="member-section-label">Online — <span id="onlineCount">0</span></div>
+    <!-- MEMBERS -->
+    <aside class="members" id="memberPanel">
+        <div class="members-label">Online — <span id="onlineCount">0</span></div>
         <div id="memberItems"></div>
     </aside>
 
 </div>
 <script>
-    // ── Color helpers ──
+    // ── Utilities ──
     function colorIdx(str) {
         let h = 0;
         for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
         return Math.abs(h) % 8;
     }
-    function escapeHtml(s) {
+    function esc(s) {
         return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
                 .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     }
 
     // ── Mobile drawer ──
-    const sidebar  = document.querySelector('.sidebar');
+    const sidebar  = document.getElementById('sidebar');
     const overlay  = document.getElementById('drawerOverlay');
     const menuBtn  = document.getElementById('menuBtn');
+    const openDrawer  = () => { sidebar.classList.add('open');  overlay.classList.add('open'); };
+    const closeDrawer = () => { sidebar.classList.remove('open'); overlay.classList.remove('open'); };
+    if (menuBtn) menuBtn.addEventListener('click', openDrawer);
+    if (overlay) overlay.addEventListener('click', closeDrawer);
+    document.querySelectorAll('.ch-item').forEach(el => el.addEventListener('click', closeDrawer));
 
-    function openDrawer()  { sidebar.classList.add('open');  overlay.classList.add('open'); }
-    function closeDrawer() { sidebar.classList.remove('open'); overlay.classList.remove('open'); }
-
-    if (menuBtn)  menuBtn.addEventListener('click', openDrawer);
-    if (overlay)  overlay.addEventListener('click', closeDrawer);
-
-    // Close drawer when a channel link is tapped on mobile — allow navigation
-    document.querySelectorAll('.ch-item').forEach(el => {
-        el.addEventListener('click', () => {
-            closeDrawer();
-            // navigation follows naturally via href
-        });
-    });
-
-    // ── Process messages: colors + grouping ──
-    function processMessages(root) {
+    // ── Colour pass: apply av + username colours, collapse consecutive same-user msgs ──
+    function applyColors(root) {
         const groups = root.querySelectorAll('.msg-group');
         let lastUser = null;
         groups.forEach(g => {
             const user = g.dataset.user || '';
-            const c = colorIdx(user);
-            const av = g.querySelector('.msg-av');
-            const un = g.querySelector('.msg-user');
-            if (av) av.className = 'msg-av av-' + c;
-            if (un) un.className = 'msg-user un-' + c;
+            const c    = colorIdx(user);
+            const av   = g.querySelector('.av');
+            const un   = g.querySelector('.msg-user');
+            if (av) av.className = `av av-${c}`;
+            if (un) un.className = `msg-user un-${c}`;
             if (user === lastUser) {
-                g.classList.add('compact');
-                const col = g.querySelector('.msg-av-col');
+                const col = g.querySelector('.av-col');
                 if (col && !col.querySelector('.compact-ts')) {
-                    col.innerHTML = '<div class="compact-ts">—</div>';
+                    col.innerHTML = '<div class="compact-ts"></div>';
                 }
-                const hdr = g.querySelector('.msg-header');
-                if (hdr) hdr.style.display = 'none';
-            } else {
-                g.classList.remove('compact');
+                const head = g.querySelector('.msg-head');
+                if (head) head.style.display = 'none';
             }
             lastUser = user;
         });
     }
 
-    // ── Member list ──
-    function buildMemberList() {
+    // ── Member panel ──
+    function rebuildMembers() {
         const seen = new Map();
         document.querySelectorAll('.msg-group').forEach(g => {
             const u = g.dataset.user;
@@ -476,73 +575,73 @@
         if (!container) return;
         container.innerHTML = '';
         seen.forEach((c, name) => {
-            container.innerHTML += `<div class="member-item">
-                <div class="member-av av-${c}">${escapeHtml(name.slice(0,2).toUpperCase())}</div>
-                <div class="member-name">${escapeHtml(name)}</div>
+            container.innerHTML += `
+            <div class="member-row">
+                <div class="member-av av-${c}">${esc(name.slice(0,2).toUpperCase())}</div>
+                <div class="member-name">${esc(name)}</div>
             </div>`;
         });
         if (countEl) countEl.textContent = seen.size;
     }
 
-    // ── Self avatar color ──
-    const ME = document.body.dataset.me || '';
-    const selfAv = document.getElementById('selfAvatar');
+    // ── Self avatar colour ──
+    const ME    = document.body.dataset.me || '';
+    const selfAv = document.getElementById('selfAv');
     if (selfAv && ME) {
-        const bgColors = ['#1e6e3e','#1a5c34','#1d6b3b','#7b2fab','#c87941','#1a6ea6','#a32b2b','#5b3fa6'];
-        selfAv.style.background = bgColors[colorIdx(ME)];
+        const palette = ['#1a5c34','#1a4e8c','#6b21a8','#92400e','#881337','#065f46','#1e3a5f','#4a1942'];
+        selfAv.style.background = palette[colorIdx(ME)];
     }
 
     // ── Init ──
-    const chatBox = document.getElementById('chatBox');
-    processMessages(chatBox);
-    buildMemberList();
-    chatBox.scrollTop = chatBox.scrollHeight;
+    const feed = document.getElementById('feed');
+    applyColors(feed);
+    rebuildMembers();
+    feed.scrollTop = feed.scrollHeight;
 
     let userScrolled = false;
-    chatBox.addEventListener('scroll', () => {
-        userScrolled = chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight > 80;
+    feed.addEventListener('scroll', () => {
+        userScrolled = feed.scrollHeight - feed.scrollTop - feed.clientHeight > 100;
     });
 
-    // Track last seen message id from server-rendered posts
+    // Track highest id from server-rendered posts
     let lastId = 0;
-    chatBox.querySelectorAll('.msg-group[data-id]').forEach(g => {
+    feed.querySelectorAll('.msg-group[data-id]').forEach(g => {
         const id = parseInt(g.dataset.id) || 0;
         if (id > lastId) lastId = id;
     });
 
-    // ── Build a new message row from JSON ──
-    function buildGroup(msg) {
-        const c = colorIdx(msg.username);
+    // ── Build message row from poll JSON ──
+    function buildRow(msg) {
+        const c   = colorIdx(msg.username);
         const div = document.createElement('div');
-        div.className = 'msg-group first-in-group';
+        div.className    = 'msg-group';
         div.dataset.user = msg.username;
         div.dataset.id   = String(msg.id);
         div.innerHTML = `
-            <div class="msg-av-col">
-                <div class="msg-av av-${c}">${escapeHtml(msg.username.slice(0,2).toUpperCase())}</div>
+            <div class="av-col">
+                <div class="av av-${c}">${esc(msg.username.slice(0,2).toUpperCase())}</div>
             </div>
             <div class="msg-body">
-                <div class="msg-header">
-                    <span class="msg-user un-${c}">${escapeHtml(msg.username)}</span>
-                    <span class="msg-time">${escapeHtml(msg.ts || '')}</span>
+                <div class="msg-head">
+                    <span class="msg-user un-${c}">${esc(msg.username)}</span>
+                    <span class="msg-time">${esc(msg.ts || '')}</span>
                 </div>
-                <div class="msg-text">${escapeHtml(msg.content)}</div>
+                <div class="msg-text">${esc(msg.content)}</div>
             </div>`;
         return div;
     }
 
-    // ── Poll every 2.5s — lightweight JSON, only new rows ──
+    // ── Poll every 2.5s ──
     const CHANNEL = document.body.dataset.channel || 'general';
     let polling = true;
 
-    // Stop polling when tab is hidden to save resources
     document.addEventListener('visibilitychange', () => {
         polling = !document.hidden;
-        if (polling) doPoll(); // immediately catch up when tab regains focus
+        if (polling) doPoll();
     });
 
     function doPoll() {
-        fetch('/poll?since=' + lastId + '&channel=' + encodeURIComponent(CHANNEL))
+        fetch(`/poll?since=${lastId}&channel=${encodeURIComponent(CHANNEL)}`)
             .then(r => {
                 if (r.status === 401) { location.href = '/login'; return null; }
                 if (r.status === 403) return null;
@@ -550,16 +649,15 @@
             })
             .then(data => {
                 if (!data || !data.messages || !data.messages.length) return;
-                // Remove empty state placeholder if present
-                const empty = chatBox.querySelector('.empty-state');
-                if (empty) chatBox.innerHTML = '<div class="sys-msg">Welcome to #' + escapeHtml(CHANNEL) + '</div>';
+                const empty = feed.querySelector('.empty-state');
+                if (empty) feed.innerHTML = `<div class="day-divider">Welcome to #${esc(CHANNEL)}</div>`;
                 data.messages.forEach(msg => {
                     if (msg.id > lastId) lastId = msg.id;
-                    chatBox.appendChild(buildGroup(msg));
+                    feed.appendChild(buildRow(msg));
                 });
-                processMessages(chatBox);
-                buildMemberList();
-                if (!userScrolled) chatBox.scrollTop = chatBox.scrollHeight;
+                applyColors(feed);
+                rebuildMembers();
+                if (!userScrolled) feed.scrollTop = feed.scrollHeight;
             })
             .catch(() => {});
     }
