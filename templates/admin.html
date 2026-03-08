@@ -23,24 +23,13 @@
             padding-bottom: 14px;
             margin-bottom: 24px;
         }
-
-        .topbar-title {
-            font-size: 18px;
-            letter-spacing: 0.2em;
-        }
-
-        .topbar-sub { font-size: 11px; color: #0a0; margin-top: 2px; letter-spacing: 0.1em; }
-
+        .topbar-title { font-size: 18px; letter-spacing: 0.2em; }
+        .topbar-sub   { font-size: 11px; color: #0a0; margin-top: 2px; letter-spacing: 0.1em; }
         .topbar-links { display: flex; gap: 10px; }
-
         .top-link {
-            font-size: 11px;
-            color: #0a0;
-            text-decoration: none;
-            border: 1px solid #0a0;
-            padding: 4px 10px;
-            letter-spacing: 0.08em;
-            transition: all 0.15s;
+            font-size: 11px; color: #0a0; text-decoration: none;
+            border: 1px solid #0a0; padding: 4px 10px;
+            letter-spacing: 0.08em; transition: all 0.15s;
         }
         .top-link:hover { color: #0f0; border-color: #0f0; }
 
@@ -53,145 +42,95 @@
             margin-bottom: 20px;
         }
 
-        .section {
-            border: 1px solid #0a0;
-            margin-bottom: 20px;
-            border-radius: 2px;
-        }
-
+        .section { border: 1px solid #0a0; margin-bottom: 20px; border-radius: 2px; }
         .section-header {
             background: rgba(0,255,0,0.06);
             border-bottom: 1px solid #0a0;
-            padding: 10px 16px;
-            font-size: 13px;
+            padding: 10px 16px; font-size: 13px;
             letter-spacing: 0.12em;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            display: flex; align-items: center; gap: 8px;
         }
-
         .section-header .badge {
-            font-size: 10px;
-            background: #0f0;
-            color: #000;
-            padding: 1px 6px;
-            border-radius: 2px;
-            font-weight: bold;
+            font-size: 10px; background: #0f0; color: #000;
+            padding: 1px 6px; border-radius: 2px; font-weight: bold;
         }
-
         .section-header .badge.locked { background: #f44; color: #fff; }
-
+        .section-header .badge.admin  { background: #fa0; color: #000; }
         .section-body { padding: 14px 16px; }
 
-        /* Admin list */
-        .admin-list {
-            list-style: none;
-            margin-bottom: 14px;
-        }
+        .admin-list { list-style: none; margin-bottom: 14px; }
         .admin-list li {
-            display: flex;
-            align-items: center;
+            display: flex; align-items: center;
             justify-content: space-between;
             padding: 7px 0;
             border-bottom: 1px solid rgba(0,255,0,0.08);
             font-size: 13px;
         }
         .admin-list li:last-child { border-bottom: none; }
-
         .admin-name { color: #0f0; letter-spacing: 0.06em; }
+        .you-tag { font-size: 10px; color: #0a0; margin-left: 6px; }
 
         .remove-btn {
-            background: transparent;
-            color: #f44;
-            border: 1px solid #f44;
-            padding: 3px 10px;
+            background: transparent; color: #f44;
+            border: 1px solid #f44; padding: 3px 10px;
             font-family: 'Courier Prime', monospace;
-            font-size: 11px;
-            cursor: pointer;
-            letter-spacing: 0.08em;
-            transition: all 0.15s;
+            font-size: 11px; cursor: pointer;
+            letter-spacing: 0.08em; transition: all 0.15s;
         }
         .remove-btn:hover { background: rgba(255,68,68,0.1); }
 
-        /* Forms */
-        .inline-form {
-            display: flex;
-            gap: 8px;
-            margin-top: 8px;
-        }
-
+        .inline-form { display: flex; gap: 8px; margin-top: 8px; }
         .inline-form input {
-            flex: 1;
-            background: rgba(0,255,0,0.04);
-            color: #0f0;
-            border: 1px solid #0a0;
-            padding: 8px 10px;
-            font-family: 'Courier Prime', monospace;
-            font-size: 13px;
-            outline: none;
-            transition: border-color 0.15s;
-            min-width: 0;
+            flex: 1; background: rgba(0,255,0,0.04); color: #0f0;
+            border: 1px solid #0a0; padding: 8px 10px;
+            font-family: 'Courier Prime', monospace; font-size: 13px;
+            outline: none; transition: border-color 0.15s; min-width: 0;
         }
         .inline-form input:focus { border-color: #0f0; }
         .inline-form input::placeholder { color: #0a0; }
 
         .btn-green {
-            background: #0f0;
-            color: #000;
-            border: none;
-            padding: 8px 14px;
-            font-family: 'Courier Prime', monospace;
-            font-size: 12px;
-            font-weight: bold;
-            letter-spacing: 0.08em;
-            cursor: pointer;
-            white-space: nowrap;
-            transition: background 0.15s;
-            flex-shrink: 0;
+            background: #0f0; color: #000; border: none;
+            padding: 8px 14px; font-family: 'Courier Prime', monospace;
+            font-size: 12px; font-weight: bold; letter-spacing: 0.08em;
+            cursor: pointer; white-space: nowrap;
+            transition: background 0.15s; flex-shrink: 0;
         }
         .btn-green:hover { background: #fff; }
 
         .btn-red {
-            background: transparent;
-            color: #f44;
-            border: 1px solid #f44;
-            padding: 8px 14px;
-            font-family: 'Courier Prime', monospace;
-            font-size: 12px;
-            letter-spacing: 0.08em;
-            cursor: pointer;
-            white-space: nowrap;
-            transition: all 0.15s;
-            flex-shrink: 0;
+            background: transparent; color: #f44; border: 1px solid #f44;
+            padding: 8px 14px; font-family: 'Courier Prime', monospace;
+            font-size: 12px; letter-spacing: 0.08em; cursor: pointer;
+            white-space: nowrap; transition: all 0.15s; flex-shrink: 0;
         }
         .btn-red:hover { background: rgba(255,68,68,0.1); }
 
         .label {
-            font-size: 11px;
-            color: #0a0;
-            letter-spacing: 0.1em;
-            margin-bottom: 6px;
-            margin-top: 12px;
+            font-size: 11px; color: #0a0;
+            letter-spacing: 0.1em; margin-bottom: 6px; margin-top: 12px;
         }
         .label:first-child { margin-top: 0; }
 
-        /* Channel overview table */
         .ch-table { width: 100%; border-collapse: collapse; font-size: 13px; }
         .ch-table td { padding: 7px 10px; border-bottom: 1px solid rgba(0,255,0,0.08); }
         .ch-table td:first-child { color: #0f0; letter-spacing: 0.08em; }
         .ch-table td:last-child { text-align: right; }
         .ch-table tr:last-child td { border-bottom: none; }
 
-        .tag {
-            font-size: 10px;
-            padding: 2px 7px;
-            border-radius: 2px;
-            letter-spacing: 0.06em;
-        }
-        .tag.open { border: 1px solid #0a0; color: #0a0; }
+        .tag { font-size: 10px; padding: 2px 7px; border-radius: 2px; letter-spacing: 0.06em; }
+        .tag.open   { border: 1px solid #0a0; color: #0a0; }
         .tag.locked { border: 1px solid #f44; color: #f44; }
 
         .empty-note { font-size: 12px; color: #0a0; font-style: italic; padding: 4px 0; }
+
+        .warn-note {
+            font-size: 11px; color: #fa0;
+            border: 1px solid rgba(255,170,0,0.3);
+            background: rgba(255,170,0,0.05);
+            padding: 8px 12px; margin-top: 10px;
+            letter-spacing: 0.04em; line-height: 1.5;
+        }
     </style>
 </head>
 <body>
@@ -199,7 +138,7 @@
 <div class="topbar">
     <div>
         <div class="topbar-title">⚙ ADMIN PANEL</div>
-        <div class="topbar-sub">OPERATOR: ashrafulishti</div>
+        <div class="topbar-sub">OPERATOR: {{ current_user }}</div>
     </div>
     <div class="topbar-links">
         <a href="{{ url_for('home') }}" class="top-link">← BACK</a>
@@ -211,7 +150,51 @@
 <div class="msg-box">✔ {{ msg }}</div>
 {% endif %}
 
-<!-- Channel overview -->
+<!-- ── Site Admins ── -->
+<div class="section">
+    <div class="section-header">
+        SITE ADMINS
+        <span class="badge admin">PRIVILEGED</span>
+    </div>
+    <div class="section-body">
+
+        <div class="label">CURRENT ADMINS</div>
+        {% if site_admins %}
+        <ul class="admin-list">
+            {% for uname in site_admins %}
+            <li>
+                <span class="admin-name">
+                    {{ uname }}
+                    {% if uname == current_user %}<span class="you-tag">(you)</span>{% endif %}
+                </span>
+                {% if uname != current_user %}
+                <form method="POST" style="display:inline;">
+                    <input type="hidden" name="action" value="revoke_admin">
+                    <input type="hidden" name="channel" value="">
+                    <input type="hidden" name="username" value="{{ uname }}">
+                    <button type="submit" class="remove-btn">REVOKE</button>
+                </form>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="empty-note">No admins listed.</div>
+        {% endif %}
+
+        <div class="label">GRANT SITE ADMIN</div>
+        <form method="POST" class="inline-form">
+            <input type="hidden" name="action" value="grant_admin">
+            <input type="hidden" name="channel" value="">
+            <input type="text" name="username" placeholder="USERNAME" required>
+            <button type="submit" class="btn-green">GRANT</button>
+        </form>
+        <div class="warn-note">⚠ Site admins have full access to this panel and all locked channels.</div>
+
+    </div>
+</div>
+
+<!-- ── Channel Overview ── -->
 <div class="section">
     <div class="section-header">ALL CHANNELS</div>
     <div class="section-body">
@@ -226,7 +209,7 @@
     </div>
 </div>
 
-<!-- Per locked channel management -->
+<!-- ── Per locked channel ── -->
 {% for ch in locked %}
 <div class="section">
     <div class="section-header">
@@ -235,7 +218,6 @@
     </div>
     <div class="section-body">
 
-        <!-- Admin list -->
         <div class="label">ADMINS WITH ACCESS</div>
         {% set admins = admins_by_channel[ch.name] %}
         {% if admins %}
@@ -253,11 +235,10 @@
             {% endfor %}
         </ul>
         {% else %}
-        <div class="empty-note">No admins added yet.</div>
+        <div class="empty-note">No channel admins added yet.</div>
         {% endif %}
 
-        <!-- Add admin -->
-        <div class="label">ADD ADMIN</div>
+        <div class="label">ADD CHANNEL ADMIN</div>
         <form method="POST" class="inline-form">
             <input type="hidden" name="action" value="add_admin">
             <input type="hidden" name="channel" value="{{ ch.name }}">
@@ -265,7 +246,6 @@
             <button type="submit" class="btn-green">ADD</button>
         </form>
 
-        <!-- Change password -->
         <div class="label">CHANGE PASSWORD</div>
         <form method="POST" class="inline-form">
             <input type="hidden" name="action" value="change_password">
@@ -274,7 +254,6 @@
             <button type="submit" class="btn-green">UPDATE</button>
         </form>
 
-        <!-- Remove lock -->
         <div class="label">MAKE PUBLIC</div>
         <form method="POST" class="inline-form">
             <input type="hidden" name="action" value="remove_password">
