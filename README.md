@@ -7,4 +7,4 @@ Features :
 - admin panel
 - session-based auth
 
-Go to **wiki** section for more info.
+Go to [wiki](https://github.com/ashrafulishti/Dalek-s-World/wiki) section for more info.
